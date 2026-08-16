@@ -71,3 +71,45 @@ class RecipeUpdate(BaseModel):
 class PlanPeriodRead(BaseModel):
     start: date
     end: date
+
+
+class PlannedRecipeCreate(BaseModel):
+    recipe_id: int
+    planned_date: date
+    meal_type: MealType
+
+
+class PlannedRecipeRead(BaseModel):
+    id: int
+    planned_date: date
+    meal_type: MealType
+    recipe: RecipeSummary
+
+
+class PlanRead(BaseModel):
+    period: PlanPeriodRead
+    items: list[PlannedRecipeRead]
+
+
+class ShoppingAmount(BaseModel):
+    quantity: float | None
+    unit: str | None
+    note: str | None = None
+
+
+class ShoppingItemRead(BaseModel):
+    ingredient_id: int
+    name: str
+    display_amount: str
+    amounts: list[ShoppingAmount]
+    conversion_hint: str | None
+    checked: bool
+
+
+class ShoppingCheckUpdate(BaseModel):
+    checked: bool
+
+
+class ShoppingListRead(BaseModel):
+    period: PlanPeriodRead
+    items: list[ShoppingItemRead]
