@@ -2,8 +2,8 @@
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0001_initial"
@@ -59,7 +59,9 @@ def upgrade() -> None:
         "recipe_ingredients",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("recipe_id", sa.Integer(), sa.ForeignKey("recipes.id", ondelete="CASCADE")),
-        sa.Column("ingredient_id", sa.Integer(), sa.ForeignKey("ingredients.id", ondelete="RESTRICT")),
+        sa.Column(
+            "ingredient_id", sa.Integer(), sa.ForeignKey("ingredients.id", ondelete="RESTRICT")
+        ),
         sa.Column("position", sa.Integer(), nullable=False),
         sa.Column("source_text", sa.Text(), nullable=False),
         sa.Column("quantity", sa.Float(), nullable=True),
@@ -90,7 +92,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE")),
         sa.Column("period_start", sa.Date(), nullable=False),
-        sa.Column("ingredient_id", sa.Integer(), sa.ForeignKey("ingredients.id", ondelete="CASCADE")),
+        sa.Column(
+            "ingredient_id", sa.Integer(), sa.ForeignKey("ingredients.id", ondelete="CASCADE")
+        ),
         sa.Column("checked", sa.Boolean(), nullable=False),
         sa.UniqueConstraint("user_id", "period_start", "ingredient_id", name="uq_shopping_check"),
     )

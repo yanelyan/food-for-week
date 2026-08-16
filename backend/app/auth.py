@@ -22,19 +22,25 @@ class TelegramUser:
 
 def validate_telegram_init_data(init_data: str) -> TelegramUser:
     if not settings.telegram_bot_token:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Bot token missing")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Bot token missing"
+        )
 
     values = dict(parse_qsl(init_data, keep_blank_values=True))
     received_hash = values.pop("hash", None)
     auth_date = int(values.get("auth_date", "0"))
     if not received_hash or abs(time.time() - auth_date) > 86400:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram data")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram data"
+        )
 
     data_check = "\n".join(f"{key}={values[key]}" for key in sorted(values))
     secret = hmac.new(b"WebAppData", settings.telegram_bot_token.encode(), hashlib.sha256).digest()
     expected_hash = hmac.new(secret, data_check.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected_hash, received_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram signature")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram signature"
+        )
 
     user_data = json.loads(values.get("user", "{}"))
     telegram_id = int(user_data["id"])
@@ -58,7 +64,9 @@ def get_current_user(
         return user
 
     if not telegram_init_data:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Telegram auth required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Telegram auth required"
+        )
 
     telegram_user = validate_telegram_init_data(telegram_init_data)
     user = db.scalar(select(User).where(User.telegram_id == telegram_user.telegram_id))

@@ -1,5 +1,5 @@
-import enum
 from datetime import date, datetime
+from enum import StrEnum
 
 from sqlalchemy import (
     BigInteger,
@@ -19,14 +19,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
-class MealType(str, enum.Enum):
+class MealType(StrEnum):
     breakfast = "breakfast"
     lunch = "lunch"
     dinner = "dinner"
     dessert = "dessert"
 
 
-class ImportStatus(str, enum.Enum):
+class ImportStatus(StrEnum):
     pending = "pending"
     processing = "processing"
     completed = "completed"
@@ -66,7 +66,9 @@ class Recipe(Base):
 
 class Ingredient(Base):
     __tablename__ = "ingredients"
-    __table_args__ = (UniqueConstraint("user_id", "normalized_name", name="uq_ingredient_user_name"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "normalized_name", name="uq_ingredient_user_name"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
