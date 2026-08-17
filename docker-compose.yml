@@ -19,6 +19,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://food_for_week:food_for_week@db:5432/food_for_week}
       APP_ENV: ${APP_ENV:-local}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
     ports:
       - "8000:8000"
     depends_on:

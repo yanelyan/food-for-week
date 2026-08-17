@@ -7,6 +7,7 @@ from urllib.parse import parse_qsl
 
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -59,8 +60,15 @@ def get_current_user(
         if user is None:
             user = User(id=1, display_name="Локальный пользователь")
             db.add(user)
-            db.commit()
-            db.refresh(user)
+            try:
+                db.commit()
+                db.refresh(user)
+            except IntegrityError:
+                # Several initial browser requests may create the local user concurrently.
+                db.rollback()
+                user = db.get(User, 1)
+                if user is None:
+                    raise
         return user
 
     if not telegram_init_data:

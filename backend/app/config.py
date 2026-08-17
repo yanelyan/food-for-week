@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     app_env: str = "local"
     database_url: str = "sqlite:///./food_for_week.sqlite3"
     telegram_bot_token: str = ""
-    frontend_origins: str = "http://localhost:5173"
+    frontend_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
