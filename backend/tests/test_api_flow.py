@@ -43,7 +43,7 @@ def test_full_recipe_plan_and_shopping_flow(
         source_url="https://food.ru/recipes/1-test",
         image_url="https://cdn.food.ru/test.jpg",
         source_yield="2 порции",
-        meal_type=MealType.breakfast,
+        meal_types=[MealType.breakfast],
         ingredients=[
             ParsedIngredient(
                 name="Мука",
@@ -72,21 +72,28 @@ def test_full_recipe_plan_and_shopping_flow(
     recipe_id = recipes[0]["id"]
     assert recipes[0]["ingredient_count"] == 2
 
+    settings = client.put(
+        "/api/settings",
+        json={"purchase_weekday": 0, "timezone_name": "UTC"},
+    )
+    assert settings.status_code == 200
+
     plan = client.get("/api/plan").json()
     response = client.post(
         "/api/plan",
         json={
             "recipe_id": recipe_id,
-            "planned_date": plan["period"]["start"],
+            "planned_date": plan["today"],
             "meal_type": "breakfast",
         },
     )
     assert response.status_code == 201
 
     shopping = client.get("/api/shopping-list").json()
-    assert [item["name"] for item in shopping["items"]] == ["Мука", "Соль"]
+    assert [item["name"] for item in shopping["items"]] == ["Мука"]
+    assert [item["name"] for item in shopping["pantry_items"]] == ["Соль"]
     assert shopping["items"][0]["display_amount"] == "300 г"
-    assert shopping["items"][1]["display_amount"] == "по вкусу"
+    assert shopping["pantry_items"][0]["display_amount"] == "по вкусу"
 
     flour_id = shopping["items"][0]["ingredient_id"]
     checked = client.patch(f"/api/shopping-list/{flour_id}", json={"checked": True}).json()

@@ -40,6 +40,17 @@ def display_quantity(quantity: float, unit: str) -> str:
         return f"{format_quantity(quantity / 1000)} кг"
     if unit == "мл" and quantity >= 1000:
         return f"{format_quantity(quantity / 1000)} л"
+    if unit == "перо":
+        integer = int(quantity) if quantity.is_integer() else None
+        if integer is not None:
+            last_two = integer % 100
+            last = integer % 10
+            if last_two not in range(11, 15) and last == 1:
+                unit = "перо"
+            elif last_two not in range(11, 15) and last in {2, 3, 4}:
+                unit = "пера"
+            else:
+                unit = "перьев"
     return f"{format_quantity(quantity)} {unit}".strip()
 
 

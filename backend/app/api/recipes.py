@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import ImportJob, Recipe, RecipeIngredient, User
+from app.models import ImportJob, Recipe, RecipeIngredient, RecipeMealType, User
 from app.schemas import (
     ImportJobRead,
     ImportRequest,
@@ -17,7 +17,7 @@ from app.schemas import (
     RecipeUpdate,
 )
 from app.services.ingredient_parser import normalize_ingredient_name
-from app.services.recipe_importer import RecipeImportError, validate_food_ru_url
+from app.services.recipe_importer import RecipeImportError, normalize_recipe_url
 from app.services.recipe_service import get_or_create_ingredient, load_recipe, process_import_job
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
@@ -35,6 +35,7 @@ def ingredient_to_schema(item: RecipeIngredient) -> IngredientRead:
         note=item.note,
         alternative_quantity=item.alternative_quantity,
         alternative_unit=item.alternative_unit,
+        is_pantry=item.ingredient.is_pantry,
     )
 
 
@@ -42,7 +43,8 @@ def recipe_to_schema(recipe: Recipe) -> RecipeRead:
     return RecipeRead(
         id=recipe.id,
         title=recipe.title,
-        meal_type=recipe.meal_type,
+        meal_types=[category.meal_type for category in recipe.meal_categories]
+        or [recipe.primary_meal_type],
         source_url=recipe.source_url,
         image_url=recipe.image_url,
         source_yield=recipe.source_yield,
@@ -57,7 +59,7 @@ def list_recipes(
 ) -> list[RecipeSummary]:
     recipes = db.scalars(
         select(Recipe)
-        .options(selectinload(Recipe.ingredients))
+        .options(selectinload(Recipe.ingredients), selectinload(Recipe.meal_categories))
         .where(Recipe.user_id == user.id)
         .order_by(Recipe.created_at.desc(), Recipe.id.desc())
     ).all()
@@ -65,7 +67,8 @@ def list_recipes(
         RecipeSummary(
             id=recipe.id,
             title=recipe.title,
-            meal_type=recipe.meal_type,
+            meal_types=[category.meal_type for category in recipe.meal_categories]
+            or [recipe.primary_meal_type],
             source_url=recipe.source_url,
             image_url=recipe.image_url,
             ingredient_count=len(recipe.ingredients),
@@ -96,7 +99,7 @@ def import_recipe(
 ) -> ImportJob:
     source_url = str(payload.url)
     try:
-        validate_food_ru_url(source_url)
+        source_url = normalize_recipe_url(source_url)
     except RecipeImportError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
@@ -151,7 +154,9 @@ def update_recipe(
     recipe = load_recipe(db, recipe_id, user.id)
     if recipe is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Рецепт не найден")
-    recipe.meal_type = payload.meal_type
+    meal_types = list(dict.fromkeys(payload.meal_types))
+    recipe.primary_meal_type = meal_types[0]
+    recipe.meal_categories = [RecipeMealType(meal_type=value) for value in meal_types]
     db.commit()
     return recipe_to_schema(recipe)
 
@@ -180,6 +185,7 @@ def update_recipe_ingredient(
     item.quantity = payload.quantity
     item.unit = payload.unit.strip() if payload.unit else None
     item.note = payload.note.strip() if payload.note else None
+    item.ingredient.is_pantry = payload.is_pantry
     item.source_text = " ".join(
         value
         for value in [

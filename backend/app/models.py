@@ -40,6 +40,8 @@ class User(Base):
     telegram_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(120), default="Локальный пользователь")
     plan_started_on: Mapped[date | None] = mapped_column(Date)
+    purchase_weekday: Mapped[int | None] = mapped_column()
+    timezone_name: Mapped[str] = mapped_column(String(80), default="UTC")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     recipes: Mapped[list["Recipe"]] = relationship(back_populates="owner")
@@ -52,7 +54,9 @@ class Recipe(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     title: Mapped[str] = mapped_column(String(240))
-    meal_type: Mapped[MealType] = mapped_column(Enum(MealType), default=MealType.lunch)
+    primary_meal_type: Mapped[MealType] = mapped_column(
+        "meal_type", Enum(MealType), default=MealType.lunch
+    )
     source_url: Mapped[str] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text)
     source_yield: Mapped[str | None] = mapped_column(String(120))
@@ -62,6 +66,22 @@ class Recipe(Base):
     ingredients: Mapped[list["RecipeIngredient"]] = relationship(
         back_populates="recipe", cascade="all, delete-orphan", order_by="RecipeIngredient.position"
     )
+    meal_categories: Mapped[list["RecipeMealType"]] = relationship(
+        back_populates="recipe", cascade="all, delete-orphan"
+    )
+
+
+class RecipeMealType(Base):
+    __tablename__ = "recipe_meal_types"
+    __table_args__ = (UniqueConstraint("recipe_id", "meal_type", name="uq_recipe_meal_type"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recipe_id: Mapped[int] = mapped_column(
+        ForeignKey("recipes.id", ondelete="CASCADE"), index=True
+    )
+    meal_type: Mapped[MealType] = mapped_column(Enum(MealType))
+
+    recipe: Mapped[Recipe] = relationship(back_populates="meal_categories")
 
 
 class Ingredient(Base):
@@ -74,6 +94,7 @@ class Ingredient(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(180))
     normalized_name: Mapped[str] = mapped_column(String(180), index=True)
+    is_pantry: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class RecipeIngredient(Base):

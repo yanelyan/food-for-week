@@ -18,12 +18,13 @@ class IngredientRead(BaseModel):
     note: str | None
     alternative_quantity: float | None
     alternative_unit: str | None
+    is_pantry: bool
 
 
 class RecipeRead(BaseModel):
     id: int
     title: str
-    meal_type: MealType
+    meal_types: list[MealType]
     source_url: str
     image_url: str | None
     source_yield: str | None
@@ -34,7 +35,7 @@ class RecipeRead(BaseModel):
 class RecipeSummary(BaseModel):
     id: int
     title: str
-    meal_type: MealType
+    meal_types: list[MealType]
     source_url: str
     image_url: str | None
     ingredient_count: int
@@ -62,10 +63,21 @@ class IngredientUpdate(BaseModel):
     quantity: float | None = Field(default=None, ge=0)
     unit: str | None = Field(default=None, max_length=40)
     note: str | None = Field(default=None, max_length=120)
+    is_pantry: bool
 
 
 class RecipeUpdate(BaseModel):
-    meal_type: MealType
+    meal_types: list[MealType] = Field(min_length=1, max_length=4)
+
+
+class UserSettingsRead(BaseModel):
+    purchase_weekday: int | None
+    timezone_name: str
+
+
+class UserSettingsUpdate(BaseModel):
+    purchase_weekday: int = Field(ge=0, le=6)
+    timezone_name: str = Field(min_length=1, max_length=80)
 
 
 class PlanPeriodRead(BaseModel):
@@ -88,6 +100,8 @@ class PlannedRecipeRead(BaseModel):
 
 class PlanRead(BaseModel):
     period: PlanPeriodRead
+    today: date
+    purchase_weekday: int
     items: list[PlannedRecipeRead]
 
 
@@ -104,6 +118,7 @@ class ShoppingItemRead(BaseModel):
     amounts: list[ShoppingAmount]
     conversion_hint: str | None
     checked: bool
+    is_pantry: bool
 
 
 class ShoppingCheckUpdate(BaseModel):
@@ -112,4 +127,6 @@ class ShoppingCheckUpdate(BaseModel):
 
 class ShoppingListRead(BaseModel):
     period: PlanPeriodRead
+    purchase_weekday: int
     items: list[ShoppingItemRead]
+    pantry_items: list[ShoppingItemRead]

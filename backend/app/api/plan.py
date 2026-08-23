@@ -13,7 +13,7 @@ from app.schemas import (
     PlanRead,
     RecipeSummary,
 )
-from app.services.plan_service import ensure_current_period
+from app.services.plan_service import planning_window
 
 router = APIRouter(prefix="/plan", tags=["plan"])
 
@@ -27,7 +27,8 @@ def planned_to_schema(item: PlannedRecipe) -> PlannedRecipeRead:
         recipe=RecipeSummary(
             id=recipe.id,
             title=recipe.title,
-            meal_type=recipe.meal_type,
+            meal_types=[category.meal_type for category in recipe.meal_categories]
+            or [recipe.primary_meal_type],
             source_url=recipe.source_url,
             image_url=recipe.image_url,
             ingredient_count=len(recipe.ingredients),
@@ -38,18 +39,23 @@ def planned_to_schema(item: PlannedRecipe) -> PlannedRecipeRead:
 
 @router.get("", response_model=PlanRead)
 def get_plan(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> PlanRead:
-    period_start, period_end = ensure_current_period(db, user)
+    window = planning_window(user)
     items = db.scalars(
         select(PlannedRecipe)
-        .options(selectinload(PlannedRecipe.recipe).selectinload(Recipe.ingredients))
+        .options(
+            selectinload(PlannedRecipe.recipe).selectinload(Recipe.ingredients),
+            selectinload(PlannedRecipe.recipe).selectinload(Recipe.meal_categories),
+        )
         .where(
             PlannedRecipe.user_id == user.id,
-            PlannedRecipe.planned_date.between(period_start, period_end),
+            PlannedRecipe.planned_date.between(window.cycle_start, window.plan_end),
         )
         .order_by(PlannedRecipe.planned_date, PlannedRecipe.meal_type, PlannedRecipe.id)
     ).all()
     return PlanRead(
-        period=PlanPeriodRead(start=period_start, end=period_end),
+        period=PlanPeriodRead(start=window.cycle_start, end=window.plan_end),
+        today=window.today,
+        purchase_weekday=user.purchase_weekday,
         items=[planned_to_schema(item) for item in items],
     )
 
@@ -60,15 +66,15 @@ def add_to_plan(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> PlannedRecipeRead:
-    period_start, period_end = ensure_current_period(db, user)
-    if not period_start <= payload.planned_date <= period_end:
+    window = planning_window(user)
+    if not window.today <= payload.planned_date <= window.plan_end:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Дата не входит в текущий семидневный план",
+            detail="Дата недоступна для планирования",
         )
     recipe = db.scalar(
         select(Recipe)
-        .options(selectinload(Recipe.ingredients))
+        .options(selectinload(Recipe.ingredients), selectinload(Recipe.meal_categories))
         .where(Recipe.id == payload.recipe_id, Recipe.user_id == user.id)
     )
     if recipe is None:

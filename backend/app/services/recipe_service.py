@@ -1,8 +1,15 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import ImportJob, ImportStatus, Ingredient, Recipe, RecipeIngredient
-from app.services.ingredient_parser import normalize_ingredient_name
+from app.models import (
+    ImportJob,
+    ImportStatus,
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+    RecipeMealType,
+)
+from app.services.ingredient_parser import is_pantry_ingredient, normalize_ingredient_name
 from app.services.recipe_importer import RecipeImportError, fetch_recipe
 
 
@@ -15,7 +22,12 @@ def get_or_create_ingredient(db: Session, user_id: int, name: str) -> Ingredient
         )
     )
     if ingredient is None:
-        ingredient = Ingredient(user_id=user_id, name=name.strip(), normalized_name=normalized_name)
+        ingredient = Ingredient(
+            user_id=user_id,
+            name=name.strip(),
+            normalized_name=normalized_name,
+            is_pantry=is_pantry_ingredient(name),
+        )
         db.add(ingredient)
         db.flush()
     return ingredient
@@ -24,7 +36,10 @@ def get_or_create_ingredient(db: Session, user_id: int, name: str) -> Ingredient
 def load_recipe(db: Session, recipe_id: int, user_id: int) -> Recipe | None:
     return db.scalar(
         select(Recipe)
-        .options(selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient))
+        .options(
+            selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient),
+            selectinload(Recipe.meal_categories),
+        )
         .where(Recipe.id == recipe_id, Recipe.user_id == user_id)
     )
 
@@ -52,13 +67,15 @@ def process_import_job(job_id: str) -> None:
             recipe = Recipe(
                 user_id=job.user_id,
                 title=imported.title,
-                meal_type=imported.meal_type,
+                primary_meal_type=imported.meal_types[0],
                 source_url=imported.source_url,
                 image_url=imported.image_url,
                 source_yield=imported.source_yield,
             )
             db.add(recipe)
             db.flush()
+            for meal_type in imported.meal_types:
+                db.add(RecipeMealType(recipe_id=recipe.id, meal_type=meal_type))
             for position, parsed in enumerate(imported.ingredients):
                 ingredient = get_or_create_ingredient(db, job.user_id, parsed.name)
                 db.add(

@@ -38,3 +38,26 @@ def test_parse_qualitative_ingredient_without_fake_quantity() -> None:
 def test_normalizes_known_synonym() -> None:
     parsed = parse_ingredient("Томаты 2 шт.")
     assert parsed.normalized_name == "помидор"
+
+
+def test_keeps_feathers_as_main_amount_and_grams_as_hint() -> None:
+    parsed = parse_ingredient("Зеленый лук 3 пера = 30 г")
+    assert parsed.name == "Зеленый лук"
+    assert parsed.quantity == 3
+    assert parsed.unit == "перо"
+    assert parsed.alternative_quantity == 30
+    assert parsed.alternative_unit == "г"
+
+
+def test_drops_egg_weight_equivalent() -> None:
+    parsed = parse_ingredient("Яйца 2 шт. = 100 г")
+    assert parsed.quantity == 2
+    assert parsed.unit == "шт."
+    assert parsed.alternative_quantity is None
+
+
+def test_converts_liquid_glasses_and_spoons_to_milliliters() -> None:
+    glass = parse_ingredient("Молоко 1 стакан = 200 г")
+    spoon = parse_ingredient("Вода 2 ст. л.")
+    assert (glass.quantity, glass.unit) == (250, "мл")
+    assert (spoon.quantity, spoon.unit) == (30, "мл")
