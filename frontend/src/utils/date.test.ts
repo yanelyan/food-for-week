@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildPeriodDays } from './date'
+import { buildPeriodDays, formatPeriodDate } from './date'
 
 describe('buildPeriodDays', () => {
   it('строит последовательный период по включительным границам', () => {
@@ -21,5 +21,11 @@ describe('buildPeriodDays', () => {
     expect(days).toHaveLength(63)
     expect(days[0]).toBe('2026-08-23')
     expect(days.at(-1)).toBe('2026-10-24')
+  })
+})
+
+describe('formatPeriodDate', () => {
+  it('показывает дату периода так же, как список покупок', () => {
+    expect(formatPeriodDate('2026-08-23')).toBe('23.08.2026')
   })
 })

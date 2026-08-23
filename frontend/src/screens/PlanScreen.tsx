@@ -5,7 +5,7 @@ import { RecipeImage } from '../components/RecipeImage'
 import { PURCHASE_DAY_LABELS } from '../components/PurchaseDaySheet'
 import { MEAL_LABELS, MEAL_ORDER } from '../constants'
 import type { MealType, Plan, PlannedRecipe, RecipeSummary } from '../types'
-import { buildPeriodDays, parseLocalDate } from '../utils/date'
+import { buildPeriodDays, formatPeriodDate, parseLocalDate } from '../utils/date'
 import { openExternal } from '../utils/openExternal'
 
 const DAYS = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб']
@@ -166,7 +166,10 @@ export function PlanScreen({
         </button>
         <h1 className="text-3xl font-black tracking-tight text-slate-900">Моя неделя</h1>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
-          <CalendarDays size={15} /> Текущая неделя и следующие восемь
+          <CalendarDays size={15} />{' '}
+          {plan
+            ? `${formatPeriodDate(plan.period.start)} — ${formatPeriodDate(plan.period.end)}`
+            : 'Период не выбран'}
         </p>
       </header>
 

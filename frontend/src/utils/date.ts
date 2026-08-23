@@ -10,6 +10,10 @@ export function formatDateValue(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+export function formatPeriodDate(value: string): string {
+  return value.split('-').reverse().join('.')
+}
+
 export function buildPeriodDays(start: string, end: string): string[] {
   const result: string[] = []
   const startDate = parseLocalDate(start)

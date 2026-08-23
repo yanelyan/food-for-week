@@ -1,10 +1,9 @@
-import { ExternalLink, LoaderCircle, Save } from 'lucide-react'
+import { LoaderCircle, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { api } from '../api'
 import { MEAL_LABELS, MEAL_ORDER } from '../constants'
 import type { MealType, Recipe, RecipeIngredient } from '../types'
-import { openExternal } from '../utils/openExternal'
 import { BottomSheet } from './BottomSheet'
 
 interface Props {
@@ -188,13 +187,6 @@ export function RecipeEditorSheet({ recipeId, onClose, onSaved, onError }: Props
               ))}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => openExternal(recipe.source_url)}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-sky-200 py-3 font-semibold text-sky-700"
-          >
-            Открыть оригинал <ExternalLink size={17} />
-          </button>
         </div>
       )}
     </BottomSheet>

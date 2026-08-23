@@ -1,7 +1,6 @@
 import {
   ArrowRight,
   ChevronRight,
-  ExternalLink,
   LoaderCircle,
   Pencil,
   Plus,
@@ -81,7 +80,8 @@ function SwipeRecipeCard({
       >
         <button
           type="button"
-          onClick={() => (selecting ? onPlan() : openExternal(recipe.source_url))}
+          aria-label={`Добавить ${recipe.title} в план`}
+          onClick={onPlan}
           className="flex min-w-0 flex-1 items-center text-left"
         >
           <RecipeImage src={recipe.image_url} alt={recipe.title} className="h-28 w-28 shrink-0" />
@@ -99,18 +99,7 @@ function SwipeRecipeCard({
             <h2 className="mt-2 line-clamp-2 font-bold leading-5 text-slate-900">{recipe.title}</h2>
             <p className="mt-1 text-xs text-slate-400">{recipe.ingredient_count} ингредиентов</p>
           </div>
-          {selecting ? (
-            <ChevronRight className="mr-3 shrink-0 text-sky-300" size={20} />
-          ) : (
-            <ExternalLink className="mr-3 shrink-0 text-sky-300" size={18} />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={onPlan}
-          className="absolute bottom-2 right-2 rounded-xl bg-sky-500 px-3 py-2 text-xs font-bold text-white shadow-md shadow-sky-200"
-        >
-          В план
+          <ChevronRight className="mr-3 shrink-0 text-sky-300" size={20} />
         </button>
         <button
           type="button"
@@ -171,7 +160,7 @@ export function RecipesScreen({
         </div>
         <h1 className="text-3xl font-black tracking-tight text-slate-900">Рецепты</h1>
         <p className="mt-1 text-sm text-slate-500">
-          {selectionLabel ? 'Нажмите на рецепт или смахните его вправо' : 'Нажмите «В план», чтобы добавить рецепт'}
+          Нажмите на рецепт или смахните его вправо, чтобы добавить в план
         </p>
       </header>
 

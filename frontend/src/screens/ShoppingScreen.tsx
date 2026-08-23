@@ -4,16 +4,13 @@ import { useState } from 'react'
 import { BottomSheet } from '../components/BottomSheet'
 import { PURCHASE_DAY_LABELS } from '../components/PurchaseDaySheet'
 import type { ShoppingItem, ShoppingList } from '../types'
+import { formatPeriodDate } from '../utils/date'
 
 interface Props {
   shopping: ShoppingList | null
   onToggle: (item: ShoppingItem) => Promise<void>
   onReset: () => Promise<void>
   onChangePurchaseDay: () => void
-}
-
-function formatPeriod(value: string): string {
-  return value.split('-').reverse().join('.')
 }
 
 function ItemRows({
@@ -103,7 +100,7 @@ export function ShoppingScreen({
           </p>
           {shopping && (
             <p className="mt-1 text-xs font-semibold text-slate-400">
-              {formatPeriod(shopping.period.start)} — {formatPeriod(shopping.period.end)}
+              {formatPeriodDate(shopping.period.start)} — {formatPeriodDate(shopping.period.end)}
             </p>
           )}
         </div>
