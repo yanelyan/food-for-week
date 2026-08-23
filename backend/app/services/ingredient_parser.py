@@ -23,6 +23,18 @@ UNITS = (
     "перо",
     "пера",
     "перьев",
+    "веточка",
+    "веточки",
+    "веточек",
+    "пучок",
+    "пучка",
+    "пучков",
+    "банка",
+    "банки",
+    "банок",
+    "упаковка",
+    "упаковки",
+    "упаковок",
     "зубчик",
     "зубчика",
     "зубчиков",
@@ -34,10 +46,12 @@ UNITS = (
 UNIT_PATTERN = "|".join(re.escape(unit) for unit in sorted(UNITS, key=len, reverse=True))
 NUMBER_PATTERN = r"(?:\d+(?:[.,]\d+)?|¼|½|¾|⅓|⅔|⅛)"
 INGREDIENT_PATTERN = re.compile(
-    rf"^(?P<name>.+?)[\s,–—-]+(?P<quantity>{NUMBER_PATTERN})\s*"
+    rf"^(?P<name>.+?)[\s,|–—-]+(?P<quantity>{NUMBER_PATTERN})\s*"
     rf"(?P<unit>{UNIT_PATTERN})"
-    rf"(?:\s*=\s*(?P<alternative_quantity>{NUMBER_PATTERN})\s*"
-    rf"(?P<alternative_unit>{UNIT_PATTERN}))?$",
+    rf"(?:\s*/\s*(?P<slash_quantity>{NUMBER_PATTERN})\s*"
+    rf"(?P<slash_unit>{UNIT_PATTERN}))?"
+    rf"(?:\s*=\s*(?P<equals_quantity>{NUMBER_PATTERN})\s*"
+    rf"(?P<equals_unit>{UNIT_PATTERN}))?$",
     re.IGNORECASE,
 )
 QUALITATIVE_PATTERN = re.compile(
@@ -61,6 +75,14 @@ UNIT_ALIASES = {
     "шт": "шт.",
     "пера": "перо",
     "перьев": "перо",
+    "веточки": "веточка",
+    "веточек": "веточка",
+    "пучка": "пучок",
+    "пучков": "пучок",
+    "банки": "банка",
+    "банок": "банка",
+    "упаковки": "упаковка",
+    "упаковок": "упаковка",
     "зубчика": "зубчик",
     "зубчиков": "зубчик",
 }
@@ -145,7 +167,7 @@ def is_pantry_ingredient(value: str) -> bool:
 def _apply_measure_rules(parsed: ParsedIngredient) -> ParsedIngredient:
     normalized_name = parsed.normalized_name
     is_egg = "яйц" in normalized_name
-    is_liquid = any(word in normalized_name for word in LIQUID_WORDS)
+    is_liquid = any(re.search(rf"\b{re.escape(word)}\b", normalized_name) for word in LIQUID_WORDS)
 
     if is_egg and parsed.alternative_unit in {"г", "кг"}:
         parsed = replace(parsed, alternative_quantity=None, alternative_unit=None)
@@ -193,8 +215,10 @@ def parse_ingredient(source_text: str) -> ParsedIngredient:
             source_text=cleaned,
             quantity=parse_number(values["quantity"]),
             unit=normalize_unit(values["unit"]),
-            alternative_quantity=parse_number(values["alternative_quantity"]),
-            alternative_unit=normalize_unit(values["alternative_unit"]),
+            alternative_quantity=parse_number(
+                values["equals_quantity"] or values["slash_quantity"]
+            ),
+            alternative_unit=normalize_unit(values["equals_unit"] or values["slash_unit"]),
         )
         return _apply_measure_rules(parsed)
 

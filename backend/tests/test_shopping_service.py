@@ -7,7 +7,13 @@ from app.services.shopping_service import (
 )
 
 
-def make_item(quantity: float | None, unit: str | None, note: str | None = None):
+def make_item(
+    quantity: float | None,
+    unit: str | None,
+    note: str | None = None,
+    alternative_quantity: float | None = None,
+    alternative_unit: str | None = None,
+):
     return RecipeIngredient(
         recipe_id=1,
         ingredient_id=1,
@@ -15,6 +21,8 @@ def make_item(quantity: float | None, unit: str | None, note: str | None = None)
         quantity=quantity,
         unit=unit,
         note=note,
+        alternative_quantity=alternative_quantity,
+        alternative_unit=alternative_unit,
     )
 
 
@@ -32,3 +40,16 @@ def test_keeps_qualitative_amount() -> None:
     add_recipe_ingredient(target, make_item(5, "г"))
     add_recipe_ingredient(target, make_item(None, None, "по вкусу"))
     assert format_amounts(target) == "5 г + по вкусу"
+
+
+def test_formats_packaging_and_keeps_weight_as_hint() -> None:
+    target = AggregatedIngredient(ingredient_id=1, name="Тунец")
+    add_recipe_ingredient(target, make_item(2, "банка", None, 540, "г"))
+    assert format_amounts(target) == "2 банки"
+    assert conversion_hint(target, "тунец") == "Эквивалент из рецепта: 540 г"
+
+
+def test_formats_branch_plural() -> None:
+    target = AggregatedIngredient(ingredient_id=1, name="Петрушка")
+    add_recipe_ingredient(target, make_item(4, "веточка", None, 8, "г"))
+    assert format_amounts(target) == "4 веточки"
