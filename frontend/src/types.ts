@@ -5,7 +5,7 @@ export type ImportStatus = 'pending' | 'processing' | 'completed' | 'failed'
 export interface RecipeSummary {
   id: number
   title: string
-  meal_type: MealType
+  meal_types: MealType[]
   source_url: string
   image_url: string | null
   ingredient_count: number
@@ -23,6 +23,7 @@ export interface RecipeIngredient {
   note: string | null
   alternative_quantity: number | null
   alternative_unit: string | null
+  is_pantry: boolean
 }
 
 export interface Recipe extends Omit<RecipeSummary, 'ingredient_count'> {
@@ -44,6 +45,8 @@ export interface PlannedRecipe {
 
 export interface Plan {
   period: PlanPeriod
+  today: string
+  purchase_weekday: number
   items: PlannedRecipe[]
 }
 
@@ -60,11 +63,19 @@ export interface ShoppingItem {
   amounts: ShoppingAmount[]
   conversion_hint: string | null
   checked: boolean
+  is_pantry: boolean
 }
 
 export interface ShoppingList {
   period: PlanPeriod
+  purchase_weekday: number
   items: ShoppingItem[]
+  pantry_items: ShoppingItem[]
+}
+
+export interface UserSettings {
+  purchase_weekday: number | null
+  timezone_name: string
 }
 
 export interface ImportJob {

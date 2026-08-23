@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { MEAL_LABELS, MEAL_ORDER } from '../constants'
 import type { MealType, Recipe, RecipeIngredient } from '../types'
+import { openExternal } from '../utils/openExternal'
 import { BottomSheet } from './BottomSheet'
 
 interface Props {
@@ -30,6 +31,7 @@ function IngredientForm({
   )
   const [unit, setUnit] = useState(ingredient.unit ?? '')
   const [note, setNote] = useState(ingredient.note ?? '')
+  const [isPantry, setIsPantry] = useState(ingredient.is_pantry)
   const [saving, setSaving] = useState(false)
 
   const save = async () => {
@@ -40,6 +42,7 @@ function IngredientForm({
         quantity: quantity === '' ? null : Number(quantity.replace(',', '.')),
         unit: unit || null,
         note: note || null,
+        is_pantry: isPantry,
       })
       onSaved(recipe)
     } catch (error) {
@@ -87,6 +90,15 @@ function IngredientForm({
         placeholder="Например: по вкусу"
         className="mt-2 w-full rounded-xl border border-sky-100 bg-white px-3 py-2 text-sm outline-none focus:border-sky-400"
       />
+      <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-slate-600">
+        <input
+          type="checkbox"
+          checked={isPantry}
+          onChange={(event) => setIsPantry(event.target.checked)}
+          className="size-4 accent-sky-500"
+        />
+        Должно быть дома
+      </label>
     </div>
   )
 }
@@ -108,10 +120,18 @@ export function RecipeEditorSheet({ recipeId, onClose, onSaved, onError }: Props
       .finally(() => setLoading(false))
   }, [recipeId, onError])
 
-  const updateMeal = async (mealType: MealType) => {
+  const toggleMeal = async (mealType: MealType) => {
     if (!recipe) return
+    const selected = recipe.meal_types.includes(mealType)
+    if (selected && recipe.meal_types.length === 1) {
+      onError('У рецепта должна остаться хотя бы одна категория')
+      return
+    }
+    const mealTypes = selected
+      ? recipe.meal_types.filter((value) => value !== mealType)
+      : [...recipe.meal_types, mealType]
     try {
-      const updated = await api.updateRecipeMeal(recipe.id, mealType)
+      const updated = await api.updateRecipeMeals(recipe.id, mealTypes)
       setRecipe(updated)
       await onSaved()
     } catch (error) {
@@ -131,17 +151,22 @@ export function RecipeEditorSheet({ recipeId, onClose, onSaved, onError }: Props
             <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-400">
               Категория
             </label>
-            <select
-              value={recipe.meal_type}
-              onChange={(event) => updateMeal(event.target.value as MealType)}
-              className="w-full rounded-2xl border border-sky-100 bg-white px-4 py-3 outline-none focus:border-sky-400"
-            >
+            <div className="grid grid-cols-2 gap-2">
               {MEAL_ORDER.map((meal) => (
-                <option key={meal} value={meal}>
+                <button
+                  key={meal}
+                  type="button"
+                  onClick={() => void toggleMeal(meal)}
+                  className={`rounded-2xl border px-3 py-3 text-sm font-bold transition ${
+                    recipe.meal_types.includes(meal)
+                      ? 'border-sky-500 bg-sky-500 text-white'
+                      : 'border-sky-100 bg-white text-slate-600'
+                  }`}
+                >
                   {MEAL_LABELS[meal]}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
           <div>
             <div className="mb-3 flex items-center justify-between">
@@ -163,14 +188,13 @@ export function RecipeEditorSheet({ recipeId, onClose, onSaved, onError }: Props
               ))}
             </div>
           </div>
-          <a
-            href={recipe.source_url}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={() => openExternal(recipe.source_url)}
             className="flex items-center justify-center gap-2 rounded-2xl border border-sky-200 py-3 font-semibold text-sky-700"
           >
             Открыть оригинал <ExternalLink size={17} />
-          </a>
+          </button>
         </div>
       )}
     </BottomSheet>

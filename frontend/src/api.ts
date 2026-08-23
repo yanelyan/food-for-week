@@ -7,6 +7,7 @@ import type {
   RecipeSummary,
   ShoppingItem,
   ShoppingList,
+  UserSettings,
 } from './types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api'
@@ -53,15 +54,21 @@ export const api = {
     request<ImportJob>('/recipes/import', { method: 'POST', body: JSON.stringify({ url }) }),
   getImportJob: (id: string) => request<ImportJob>(`/recipes/imports/${id}`),
   listImportJobs: () => request<ImportJob[]>('/recipes/imports/recent'),
-  updateRecipeMeal: (recipeId: number, mealType: MealType) =>
+  updateRecipeMeals: (recipeId: number, mealTypes: MealType[]) =>
     request<Recipe>(`/recipes/${recipeId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ meal_type: mealType }),
+      body: JSON.stringify({ meal_types: mealTypes }),
     }),
   updateIngredient: (
     recipeId: number,
     ingredientId: number,
-    payload: { name: string; quantity: number | null; unit: string | null; note: string | null },
+    payload: {
+      name: string
+      quantity: number | null
+      unit: string | null
+      note: string | null
+      is_pantry: boolean
+    },
   ) =>
     request<Recipe>(`/recipes/${recipeId}/ingredients/${ingredientId}`, {
       method: 'PATCH',
@@ -81,4 +88,10 @@ export const api = {
       body: JSON.stringify({ checked }),
     }),
   resetShopping: () => request<void>('/shopping-list/reset', { method: 'POST' }),
+  getSettings: () => request<UserSettings>('/settings'),
+  updateSettings: (purchaseWeekday: number, timezoneName: string) =>
+    request<UserSettings>('/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ purchase_weekday: purchaseWeekday, timezone_name: timezoneName }),
+    }),
 }

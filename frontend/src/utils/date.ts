@@ -10,10 +10,12 @@ export function formatDateValue(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-export function buildPeriodDays(start: string): string[] {
+export function buildPeriodDays(start: string, end: string): string[] {
   const result: string[] = []
   const startDate = parseLocalDate(start)
-  for (let index = 0; index < 7; index += 1) {
+  const endDate = parseLocalDate(end)
+  const numberOfDays = Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1
+  for (let index = 0; index < numberOfDays; index += 1) {
     const date = new Date(startDate)
     date.setDate(startDate.getDate() + index)
     result.push(formatDateValue(date))

@@ -40,3 +40,58 @@ a {
     transform: translateY(0) scale(1);
   }
 }
+
+@keyframes screen-enter-left {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes screen-enter-right {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes selection-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(14 165 233 / 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgb(14 165 233 / 0.16);
+  }
+}
+
+.screen-enter-left {
+  animation: screen-enter-left 230ms ease-out backwards;
+}
+
+.screen-enter-right {
+  animation: screen-enter-right 230ms ease-out backwards;
+}
+
+.selection-breathe {
+  animation: selection-breathe 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
