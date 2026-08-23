@@ -156,6 +156,8 @@ def update_recipe(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Рецепт не найден")
     meal_types = list(dict.fromkeys(payload.meal_types))
     recipe.primary_meal_type = meal_types[0]
+    recipe.meal_categories.clear()
+    db.flush()
     recipe.meal_categories = [RecipeMealType(meal_type=value) for value in meal_types]
     db.commit()
     return recipe_to_schema(recipe)

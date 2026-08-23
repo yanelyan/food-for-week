@@ -54,9 +54,7 @@ def validate_recipe_url(url: str) -> None:
 def _find_recipe_data(value: object) -> dict[str, object] | None:
     if isinstance(value, dict):
         recipe_type = value.get("@type")
-        if recipe_type == "Recipe" or (
-            isinstance(recipe_type, list) and "Recipe" in recipe_type
-        ):
+        if recipe_type == "Recipe" or (isinstance(recipe_type, list) and "Recipe" in recipe_type):
             return value
         for nested_value in value.values():
             found = _find_recipe_data(nested_value)
@@ -144,8 +142,7 @@ def parse_recipe_html(html: str, source_url: str) -> ImportedRecipe:
         else [str(raw_category or "")]
     )
     categories.extend(
-        element.get_text(" ", strip=True)
-        for element in soup.select('[data-testid$="-link"]')
+        element.get_text(" ", strip=True) for element in soup.select('[data-testid$="-link"]')
     )
 
     source_value = str(recipe_data.get("url") or "")

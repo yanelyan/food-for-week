@@ -36,8 +36,7 @@ def upgrade() -> None:
     op.create_index("ix_recipe_meal_types_recipe_id", "recipe_meal_types", ["recipe_id"])
     op.execute(
         sa.text(
-            "INSERT INTO recipe_meal_types (recipe_id, meal_type) "
-            "SELECT id, meal_type FROM recipes"
+            "INSERT INTO recipe_meal_types (recipe_id, meal_type) SELECT id, meal_type FROM recipes"
         )
     )
 

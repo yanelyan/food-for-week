@@ -38,6 +38,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]
 def test_full_recipe_plan_and_shopping_flow(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    initial_settings = client.get("/api/settings").json()
+    assert initial_settings["purchase_weekday"] is None
+
     imported = ImportedRecipe(
         title="Тестовые вафли",
         source_url="https://food.ru/recipes/1-test",
@@ -72,6 +75,12 @@ def test_full_recipe_plan_and_shopping_flow(
     recipe_id = recipes[0]["id"]
     assert recipes[0]["ingredient_count"] == 2
 
+    updated_recipe = client.patch(
+        f"/api/recipes/{recipe_id}",
+        json={"meal_types": ["breakfast", "dessert"]},
+    ).json()
+    assert updated_recipe["meal_types"] == ["breakfast", "dessert"]
+
     settings = client.put(
         "/api/settings",
         json={"purchase_weekday": 0, "timezone_name": "UTC"},
@@ -98,3 +107,15 @@ def test_full_recipe_plan_and_shopping_flow(
     flour_id = shopping["items"][0]["ingredient_id"]
     checked = client.patch(f"/api/shopping-list/{flour_id}", json={"checked": True}).json()
     assert checked["checked"] is True
+
+    salt_id = shopping["pantry_items"][0]["ingredient_id"]
+    moved = client.patch(f"/api/shopping-list/{salt_id}", json={"checked": False}).json()
+    assert moved["checked"] is False
+    assert [item["name"] for item in client.get("/api/shopping-list").json()["items"]] == [
+        "Мука",
+        "Соль",
+    ]
+
+    assert client.post("/api/shopping-list/reset").status_code == 204
+    reset = client.get("/api/shopping-list").json()
+    assert [item["name"] for item in reset["pantry_items"]] == ["Соль"]

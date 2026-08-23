@@ -1,7 +1,12 @@
 import pytest
 
 from app.models import MealType
-from app.services.recipe_importer import RecipeImportError, parse_recipe_html, validate_recipe_url
+from app.services.recipe_importer import (
+    RecipeImportError,
+    normalize_recipe_url,
+    parse_recipe_html,
+    validate_recipe_url,
+)
 
 HTML = """
 <html><head><script type="application/ld+json">
@@ -52,3 +57,12 @@ def test_rejects_unsupported_urls(url: str) -> None:
 )
 def test_accepts_supported_recipe_sources(url: str) -> None:
     validate_recipe_url(url)
+
+
+def test_normalizes_recipe_url_and_removes_tracking() -> None:
+    assert (
+        normalize_recipe_url(
+            "https://www.gastronom.ru/recipe/66058/prostoj-domashnij-ketchup/?utm_source=test"
+        )
+        == "https://gastronom.ru/recipe/66058/prostoj-domashnij-ketchup"
+    )

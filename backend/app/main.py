@@ -24,9 +24,7 @@ app.include_router(settings_router, prefix="/api")
 
 
 @app.exception_handler(PurchaseDayRequiredError)
-def purchase_day_required(
-    _request: Request, exc: PurchaseDayRequiredError
-) -> JSONResponse:
+def purchase_day_required(_request: Request, exc: PurchaseDayRequiredError) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={"detail": str(exc)},

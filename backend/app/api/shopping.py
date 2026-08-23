@@ -73,9 +73,7 @@ def get_shopping_list(
             name=target.name,
             display_amount=format_amounts(target),
             amounts=amounts,
-            conversion_hint=conversion_hint(
-                target, normalized_names.get(target.ingredient_id, "")
-            ),
+            conversion_hint=conversion_hint(target, normalized_names.get(target.ingredient_id, "")),
             checked=checked,
             is_pantry=is_pantry,
         )

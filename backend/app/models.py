@@ -76,9 +76,7 @@ class RecipeMealType(Base):
     __table_args__ = (UniqueConstraint("recipe_id", "meal_type", name="uq_recipe_meal_type"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    recipe_id: Mapped[int] = mapped_column(
-        ForeignKey("recipes.id", ondelete="CASCADE"), index=True
-    )
+    recipe_id: Mapped[int] = mapped_column(ForeignKey("recipes.id", ondelete="CASCADE"), index=True)
     meal_type: Mapped[MealType] = mapped_column(Enum(MealType))
 
     recipe: Mapped[Recipe] = relationship(back_populates="meal_categories")
