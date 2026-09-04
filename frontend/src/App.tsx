@@ -304,6 +304,30 @@ export default function App() {
                 shopping={shopping}
                 onChangePurchaseDay={() => setPurchaseDayOpen(true)}
                 onManagePantry={() => void openPantryManager()}
+                onAddToPantry={async (item) => {
+                  try {
+                    await api.addPantryProduct(item.name)
+                    await Promise.all([refreshPantryProducts(), refreshPlanAndShopping()])
+                    showToast(`«${item.name}» добавлен в домашние продукты`)
+                  } catch (error) {
+                    showToast(
+                      error instanceof Error ? error.message : 'Не удалось добавить продукт',
+                      'error',
+                    )
+                  }
+                }}
+                onRemoveFromPantry={async (item) => {
+                  try {
+                    await api.removePantryProduct(item.ingredient_id)
+                    await Promise.all([refreshPantryProducts(), refreshPlanAndShopping()])
+                    showToast(`«${item.name}» убран из домашних продуктов`)
+                  } catch (error) {
+                    showToast(
+                      error instanceof Error ? error.message : 'Не удалось убрать продукт',
+                      'error',
+                    )
+                  }
+                }}
                 onToggle={async (item) => {
                   try {
                     await api.updateShoppingCheck(item.ingredient_id, !item.checked)

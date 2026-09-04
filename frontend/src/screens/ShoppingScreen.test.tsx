@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { ShoppingItem } from '../types'
@@ -26,9 +26,11 @@ function item(
 }
 
 describe('ShoppingScreen', () => {
-  it('не перечёркивает отмеченные домашние продукты', () => {
+  it('не перечёркивает отмеченные домашние продукты', async () => {
     const onToggle = vi.fn().mockResolvedValue(undefined)
     const onManagePantry = vi.fn()
+    const onAddToPantry = vi.fn().mockResolvedValue(undefined)
+    const onRemoveFromPantry = vi.fn().mockResolvedValue(undefined)
     render(
       <ShoppingScreen
         shopping={{
@@ -41,6 +43,8 @@ describe('ShoppingScreen', () => {
         onReset={vi.fn()}
         onChangePurchaseDay={vi.fn()}
         onManagePantry={onManagePantry}
+        onAddToPantry={onAddToPantry}
+        onRemoveFromPantry={onRemoveFromPantry}
       />,
     )
 
@@ -52,6 +56,18 @@ describe('ShoppingScreen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Открыть список «Должно быть дома»' }))
     expect(onManagePantry).toHaveBeenCalledOnce()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить Яблоко в домашние продукты' }))
+    await waitFor(() =>
+      expect(onAddToPantry).toHaveBeenCalledWith(expect.objectContaining({ name: 'Яблоко' })),
+    )
+
+    const removeButton = screen.getByRole('button', {
+      name: 'Убрать Соль из домашних продуктов',
+    }) as HTMLButtonElement
+    await waitFor(() => expect(removeButton.disabled).toBe(false))
+    fireEvent.click(removeButton)
+    expect(onRemoveFromPantry).toHaveBeenCalledWith(expect.objectContaining({ name: 'Соль' }))
   })
 
   it('показывает вход в персональный список даже без продуктов текущей недели', () => {
@@ -67,6 +83,8 @@ describe('ShoppingScreen', () => {
         onReset={vi.fn()}
         onChangePurchaseDay={vi.fn()}
         onManagePantry={vi.fn()}
+        onAddToPantry={vi.fn()}
+        onRemoveFromPantry={vi.fn()}
       />,
     )
 
@@ -89,6 +107,8 @@ describe('ShoppingScreen', () => {
         onReset={vi.fn()}
         onChangePurchaseDay={vi.fn()}
         onManagePantry={vi.fn()}
+        onAddToPantry={vi.fn()}
+        onRemoveFromPantry={vi.fn()}
       />,
     )
 

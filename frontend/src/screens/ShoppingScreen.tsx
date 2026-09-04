@@ -1,4 +1,14 @@
-import { Check, ChevronRight, Home, RotateCcw, ShoppingBasket } from 'lucide-react'
+import {
+  Check,
+  ChevronRight,
+  Home,
+  HousePlus,
+  LoaderCircle,
+  RotateCcw,
+  ShoppingBasket,
+  Trash2,
+} from 'lucide-react'
+import { useState } from 'react'
 
 import { PURCHASE_DAY_AFTER_IN } from '../components/PurchaseDaySheet'
 import type { ShoppingItem, ShoppingList } from '../types'
@@ -10,15 +20,21 @@ interface Props {
   onReset: () => Promise<void>
   onChangePurchaseDay: () => void
   onManagePantry: () => void
+  onAddToPantry: (item: ShoppingItem) => Promise<void>
+  onRemoveFromPantry: (item: ShoppingItem) => Promise<void>
 }
 
 function ItemRows({
   items,
   onToggle,
+  onPantryChange,
+  pantryPending,
   strikeChecked = true,
 }: {
   items: ShoppingItem[]
   onToggle: (item: ShoppingItem) => Promise<void>
+  onPantryChange: (item: ShoppingItem) => Promise<void>
+  pantryPending: number | null
   strikeChecked?: boolean
 }) {
   return items.map((item, index) => (
@@ -64,6 +80,29 @@ function ItemRows({
           )}
         </p>
       </button>
+      <button
+        type="button"
+        onClick={() => void onPantryChange(item)}
+        disabled={pantryPending === item.ingredient_id}
+        className={`grid size-9 shrink-0 place-items-center rounded-xl transition disabled:opacity-50 ${
+          item.is_pantry
+            ? 'bg-rose-50 text-rose-500'
+            : 'bg-cyan-50 text-cyan-600 hover:bg-cyan-100'
+        }`}
+        aria-label={
+          item.is_pantry
+            ? `Убрать ${item.name} из домашних продуктов`
+            : `Добавить ${item.name} в домашние продукты`
+        }
+      >
+        {pantryPending === item.ingredient_id ? (
+          <LoaderCircle className="animate-spin" size={17} />
+        ) : item.is_pantry ? (
+          <Trash2 size={17} />
+        ) : (
+          <HousePlus size={18} />
+        )}
+      </button>
     </div>
   ))
 }
@@ -87,10 +126,24 @@ export function ShoppingScreen({
   onReset,
   onChangePurchaseDay,
   onManagePantry,
+  onAddToPantry,
+  onRemoveFromPantry,
 }: Props) {
+  const [pantryPending, setPantryPending] = useState<number | null>(null)
   const checked = shopping?.items.filter((item) => item.checked).length ?? 0
   const total = shopping?.items.length ?? 0
   const pantryItems = shopping?.pantry_items ?? []
+
+  const changePantry = async (item: ShoppingItem) => {
+    if (pantryPending !== null) return
+    setPantryPending(item.ingredient_id)
+    try {
+      if (item.is_pantry) await onRemoveFromPantry(item)
+      else await onAddToPantry(item)
+    } finally {
+      setPantryPending(null)
+    }
+  }
 
   return (
     <section className="min-h-full px-4 pb-28 pt-5">
@@ -148,7 +201,12 @@ export function ShoppingScreen({
         </div>
       ) : total > 0 ? (
         <div className="mt-5 overflow-hidden rounded-[1.75rem] border border-sky-100 bg-white shadow-sm">
-          <ItemRows items={shopping.items} onToggle={onToggle} />
+          <ItemRows
+            items={shopping.items}
+            onToggle={onToggle}
+            onPantryChange={changePantry}
+            pantryPending={pantryPending}
+          />
         </div>
       ) : null}
 
@@ -178,13 +236,14 @@ export function ShoppingScreen({
               <ItemRows
                 items={pantryItems}
                 onToggle={onToggle}
+                onPantryChange={changePantry}
+                pantryPending={pantryPending}
                 strikeChecked={false}
               />
             </div>
           )}
         </section>
       )}
-
     </section>
   )
 }
