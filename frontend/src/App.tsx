@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { api } from './api'
 import { BottomNavigation } from './components/BottomNavigation'
+import { PantryManagerSheet } from './components/PantryManagerSheet'
 import { PurchaseDaySheet } from './components/PurchaseDaySheet'
 import { RecipeEditorSheet } from './components/RecipeEditorSheet'
 import { Toast, type ToastData, type ToastKind } from './components/Toast'
@@ -14,6 +15,7 @@ import { ShoppingScreen } from './screens/ShoppingScreen'
 import type {
   ImportJob,
   MealType,
+  PantryProduct,
   Plan,
   RecipeSummary,
   ShoppingList,
@@ -51,6 +53,10 @@ export default function App() {
   const [purchaseDayOpen, setPurchaseDayOpen] = useState(false)
   const [savingPurchaseDay, setSavingPurchaseDay] = useState(false)
   const [importJob, setImportJob] = useState<ImportJob | null>(null)
+  const [pantryOpen, setPantryOpen] = useState(false)
+  const [pantryProducts, setPantryProducts] = useState<PantryProduct[]>([])
+  const [pantryLoading, setPantryLoading] = useState(false)
+  const [pantrySaving, setPantrySaving] = useState(false)
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastTimer = useRef<number | null>(null)
   const scrollContainer = useRef<HTMLDivElement | null>(null)
@@ -82,6 +88,22 @@ export default function App() {
     setPlan(nextPlan)
     setShopping(nextShopping)
   }, [])
+
+  const refreshPantryProducts = useCallback(async () => {
+    setPantryProducts(await api.listPantryProducts())
+  }, [])
+
+  const openPantryManager = async () => {
+    setPantryOpen(true)
+    setPantryLoading(true)
+    try {
+      await refreshPantryProducts()
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Не удалось загрузить домашние продукты', 'error')
+    } finally {
+      setPantryLoading(false)
+    }
+  }
 
   useEffect(() => {
     scrollContainer.current?.scrollTo({ top: 0 })
@@ -252,6 +274,7 @@ export default function App() {
               <ShoppingScreen
                 shopping={shopping}
                 onChangePurchaseDay={() => setPurchaseDayOpen(true)}
+                onManagePantry={() => void openPantryManager()}
                 onToggle={async (item) => {
                   try {
                     await api.updateShoppingCheck(item.ingredient_id, !item.checked)
@@ -337,6 +360,46 @@ export default function App() {
           </div>
         </div>
         <BottomNavigation activeTab={activeTab} onChange={navigate} />
+        <PantryManagerSheet
+          open={pantryOpen}
+          products={pantryProducts}
+          loading={pantryLoading}
+          saving={pantrySaving}
+          onClose={() => setPantryOpen(false)}
+          onAdd={async (name) => {
+            setPantrySaving(true)
+            try {
+              await api.addPantryProduct(name)
+              await Promise.all([refreshPantryProducts(), refreshPlanAndShopping()])
+              showToast(`«${name}» добавлен в домашние продукты`)
+              return true
+            } catch (error) {
+              showToast(error instanceof Error ? error.message : 'Не удалось добавить продукт', 'error')
+              return false
+            } finally {
+              setPantrySaving(false)
+            }
+          }}
+          onRemove={async (product) => {
+            if (
+              !window.confirm(
+                `Убрать «${product.name}» из домашних продуктов? Он вернётся в обычный список покупок.`,
+              )
+            ) {
+              return
+            }
+            setPantrySaving(true)
+            try {
+              await api.removePantryProduct(product.id)
+              await Promise.all([refreshPantryProducts(), refreshPlanAndShopping()])
+              showToast(`«${product.name}» убран из домашних продуктов`)
+            } catch (error) {
+              showToast(error instanceof Error ? error.message : 'Не удалось убрать продукт', 'error')
+            } finally {
+              setPantrySaving(false)
+            }
+          }}
+        />
         <RecipeEditorSheet
           recipeId={editorRecipeId}
           onClose={() => setEditorRecipeId(null)}

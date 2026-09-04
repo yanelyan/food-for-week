@@ -1,6 +1,7 @@
 import type {
   ImportJob,
   MealType,
+  PantryProduct,
   Plan,
   PlannedRecipe,
   Recipe,
@@ -89,6 +90,14 @@ export const api = {
       body: JSON.stringify({ checked }),
     }),
   resetShopping: () => request<void>('/shopping-list/reset', { method: 'POST' }),
+  listPantryProducts: () => request<PantryProduct[]>('/shopping-list/pantry'),
+  addPantryProduct: (name: string) =>
+    request<PantryProduct>('/shopping-list/pantry', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  removePantryProduct: (id: number) =>
+    request<void>(`/shopping-list/pantry/${id}`, { method: 'DELETE' }),
   getSettings: () => request<UserSettings>('/settings'),
   updateSettings: (purchaseWeekday: number, timezoneName: string) =>
     request<UserSettings>('/settings', {

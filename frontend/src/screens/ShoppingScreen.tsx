@@ -1,4 +1,4 @@
-import { Check, Home, Info, RotateCcw, ShoppingBasket } from 'lucide-react'
+import { Check, ChevronRight, Home, Info, RotateCcw, ShoppingBasket } from 'lucide-react'
 import { useState } from 'react'
 
 import { BottomSheet } from '../components/BottomSheet'
@@ -11,6 +11,7 @@ interface Props {
   onToggle: (item: ShoppingItem) => Promise<void>
   onReset: () => Promise<void>
   onChangePurchaseDay: () => void
+  onManagePantry: () => void
 }
 
 function ItemRows({
@@ -81,6 +82,7 @@ export function ShoppingScreen({
   onToggle,
   onReset,
   onChangePurchaseDay,
+  onManagePantry,
 }: Props) {
   const [hint, setHint] = useState<ShoppingItem | null>(null)
   const checked = shopping?.items.filter((item) => item.checked).length ?? 0
@@ -141,36 +143,44 @@ export function ShoppingScreen({
             Добавьте рецепты в план — продукты появятся здесь автоматически.
           </p>
         </div>
-      ) : (
-        <>
-          {total > 0 && (
-            <div className="mt-5 overflow-hidden rounded-[1.75rem] border border-sky-100 bg-white shadow-sm">
-              <ItemRows items={shopping.items} onToggle={onToggle} onHint={setHint} />
+      ) : total > 0 ? (
+        <div className="mt-5 overflow-hidden rounded-[1.75rem] border border-sky-100 bg-white shadow-sm">
+          <ItemRows items={shopping.items} onToggle={onToggle} onHint={setHint} />
+        </div>
+      ) : null}
+
+      {shopping && (
+        <section className="mt-7">
+          <button
+            type="button"
+            onClick={onManagePantry}
+            className="mb-3 flex w-full items-center gap-2 rounded-2xl px-1 py-1 text-left transition active:bg-cyan-50"
+            aria-label="Открыть список «Должно быть дома»"
+          >
+            <div className="grid size-8 place-items-center rounded-xl bg-cyan-100 text-cyan-700">
+              <Home size={17} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-black text-slate-900">Должно быть дома</h2>
+              <p className="text-xs text-slate-400">
+                {pantryItems.length
+                  ? 'Снимите галочку, если продукт закончился'
+                  : 'Нажмите, чтобы настроить персональный список'}
+              </p>
+            </div>
+            <ChevronRight className="shrink-0 text-cyan-400" size={20} />
+          </button>
+          {pantryItems.length > 0 && (
+            <div className="overflow-hidden rounded-[1.75rem] border border-cyan-100 bg-white shadow-sm">
+              <ItemRows
+                items={pantryItems}
+                onToggle={onToggle}
+                onHint={setHint}
+                strikeChecked={false}
+              />
             </div>
           )}
-
-          {pantryItems.length > 0 && (
-            <section className="mt-7">
-              <div className="mb-3 flex items-center gap-2 px-1">
-                <div className="grid size-8 place-items-center rounded-xl bg-cyan-100 text-cyan-700">
-                  <Home size={17} />
-                </div>
-                <div>
-                  <h2 className="font-black text-slate-900">Должно быть дома</h2>
-                  <p className="text-xs text-slate-400">Снимите галочку, если продукт закончился</p>
-                </div>
-              </div>
-              <div className="overflow-hidden rounded-[1.75rem] border border-cyan-100 bg-white shadow-sm">
-                <ItemRows
-                  items={pantryItems}
-                  onToggle={onToggle}
-                  onHint={setHint}
-                  strikeChecked={false}
-                />
-              </div>
-            </section>
-          )}
-        </>
+        </section>
       )}
 
       <BottomSheet open={hint !== null} title="Перевод единиц" onClose={() => setHint(null)}>

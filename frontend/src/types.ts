@@ -73,6 +73,12 @@ export interface ShoppingList {
   pantry_items: ShoppingItem[]
 }
 
+export interface PantryProduct {
+  id: number
+  name: string
+  normalized_name: string
+}
+
 export interface UserSettings {
   purchase_weekday: number | null
   timezone_name: string
