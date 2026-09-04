@@ -1,7 +1,5 @@
-import { Check, ChevronRight, Home, Info, RotateCcw, ShoppingBasket } from 'lucide-react'
-import { useState } from 'react'
+import { Check, ChevronRight, Home, RotateCcw, ShoppingBasket } from 'lucide-react'
 
-import { BottomSheet } from '../components/BottomSheet'
 import { PURCHASE_DAY_AFTER_IN } from '../components/PurchaseDaySheet'
 import type { ShoppingItem, ShoppingList } from '../types'
 import { formatPeriodDate } from '../utils/date'
@@ -17,12 +15,10 @@ interface Props {
 function ItemRows({
   items,
   onToggle,
-  onHint,
   strikeChecked = true,
 }: {
   items: ShoppingItem[]
   onToggle: (item: ShoppingItem) => Promise<void>
-  onHint: (item: ShoppingItem) => void
   strikeChecked?: boolean
 }) {
   return items.map((item, index) => (
@@ -56,25 +52,33 @@ function ItemRows({
           {item.name}
         </p>
         <p
-          className={`mt-0.5 text-sm ${
+          className={`mt-0.5 flex flex-wrap items-baseline gap-x-2 text-sm ${
             item.checked && strikeChecked ? 'text-slate-300' : 'text-slate-500'
           }`}
         >
-          {item.display_amount}
+          <span>{item.display_amount}</span>
+          {item.conversion_hint && (
+            <span className={item.checked && strikeChecked ? '' : 'font-medium text-sky-500'}>
+              {inlineConversionHint(item.conversion_hint)}
+            </span>
+          )}
         </p>
       </button>
-      {item.conversion_hint && (
-        <button
-          type="button"
-          onClick={() => onHint(item)}
-          className="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-500"
-          aria-label="Показать перевод единиц"
-        >
-          <Info size={17} />
-        </button>
-      )}
     </div>
   ))
+}
+
+function inlineConversionHint(hint: string): string {
+  const partialPrefix = 'Эквивалент только для части количества: '
+  if (hint.startsWith(partialPrefix)) return `частично ≈ ${hint.slice(partialPrefix.length)}`
+
+  const sourcePrefix = 'Эквивалент из рецепта: '
+  if (hint.startsWith(sourcePrefix)) return `≈ ${hint.slice(sourcePrefix.length)}`
+
+  const approximatePrefix = 'Примерно: '
+  if (hint.startsWith(approximatePrefix)) return `≈ ${hint.slice(approximatePrefix.length)}`
+
+  return hint
 }
 
 export function ShoppingScreen({
@@ -84,7 +88,6 @@ export function ShoppingScreen({
   onChangePurchaseDay,
   onManagePantry,
 }: Props) {
-  const [hint, setHint] = useState<ShoppingItem | null>(null)
   const checked = shopping?.items.filter((item) => item.checked).length ?? 0
   const total = shopping?.items.length ?? 0
   const pantryItems = shopping?.pantry_items ?? []
@@ -145,7 +148,7 @@ export function ShoppingScreen({
         </div>
       ) : total > 0 ? (
         <div className="mt-5 overflow-hidden rounded-[1.75rem] border border-sky-100 bg-white shadow-sm">
-          <ItemRows items={shopping.items} onToggle={onToggle} onHint={setHint} />
+          <ItemRows items={shopping.items} onToggle={onToggle} />
         </div>
       ) : null}
 
@@ -175,7 +178,6 @@ export function ShoppingScreen({
               <ItemRows
                 items={pantryItems}
                 onToggle={onToggle}
-                onHint={setHint}
                 strikeChecked={false}
               />
             </div>
@@ -183,20 +185,6 @@ export function ShoppingScreen({
         </section>
       )}
 
-      <BottomSheet open={hint !== null} title="Перевод единиц" onClose={() => setHint(null)}>
-        {hint && (
-          <div className="rounded-2xl bg-sky-50 p-4">
-            <p className="font-bold text-slate-900">{hint.name}</p>
-            <p className="mt-1 text-sm text-slate-600">В списке: {hint.display_amount}</p>
-            <p className="mt-4 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-sky-700">
-              {hint.conversion_hint}
-            </p>
-            <p className="mt-3 text-xs leading-5 text-slate-400">
-              Подсказка сохраняет эквивалент из источника или показывает проверенный перевод меры.
-            </p>
-          </div>
-        )}
-      </BottomSheet>
     </section>
   )
 }
