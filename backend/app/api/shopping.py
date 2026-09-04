@@ -77,7 +77,7 @@ def get_shopping_list(
             checked=checked,
             is_pantry=is_pantry,
         )
-        if is_pantry and checked:
+        if is_pantry:
             pantry_items.append(item)
         else:
             items.append(item)

@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.ingredient_parser import parse_ingredient
+from app.services.ingredient_parser import is_pantry_ingredient, parse_ingredient
 
 
 @pytest.mark.parametrize(
@@ -71,3 +71,8 @@ def test_converts_liquid_glasses_and_spoons_to_milliliters() -> None:
     spoon = parse_ingredient("Вода 2 ст. л.")
     assert (glass.quantity, glass.unit) == (250, "мл")
     assert (spoon.quantity, spoon.unit) == (30, "мл")
+
+
+def test_butter_is_not_classified_as_pantry_oil() -> None:
+    assert is_pantry_ingredient("Оливковое масло") is True
+    assert is_pantry_ingredient("Сливочное масло") is False

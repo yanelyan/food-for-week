@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -109,13 +110,29 @@ def test_full_recipe_plan_and_shopping_flow(
     assert checked["checked"] is True
 
     salt_id = shopping["pantry_items"][0]["ingredient_id"]
-    moved = client.patch(f"/api/shopping-list/{salt_id}", json={"checked": False}).json()
-    assert moved["checked"] is False
-    assert [item["name"] for item in client.get("/api/shopping-list").json()["items"]] == [
-        "Мука",
-        "Соль",
-    ]
+    unchecked = client.patch(f"/api/shopping-list/{salt_id}", json={"checked": False}).json()
+    assert unchecked["checked"] is False
+    after_uncheck = client.get("/api/shopping-list").json()
+    assert [item["name"] for item in after_uncheck["items"]] == ["Мука"]
+    assert after_uncheck["pantry_items"][0]["name"] == "Соль"
+    assert after_uncheck["pantry_items"][0]["checked"] is False
 
     assert client.post("/api/shopping-list/reset").status_code == 204
     reset = client.get("/api/shopping-list").json()
     assert [item["name"] for item in reset["pantry_items"]] == ["Соль"]
+
+    next_week = date.fromisoformat(plan["period"]["start"]) + timedelta(days=7)
+    assert (
+        client.post(
+            "/api/plan",
+            json={
+                "recipe_id": recipe_id,
+                "planned_date": next_week.isoformat(),
+                "meal_type": "breakfast",
+            },
+        ).status_code
+        == 201
+    )
+    assert client.delete("/api/plan/current-week").status_code == 204
+    remaining = client.get("/api/plan").json()["items"]
+    assert [item["planned_date"] for item in remaining] == [next_week.isoformat()]

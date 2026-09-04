@@ -1,32 +1,19 @@
-"""Repair packaged measures and backfill pantry ingredients."""
+"""Keep pantry checks in place and exclude butter from pantry."""
 
 from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.ingredient_parser import is_pantry_ingredient, parse_ingredient
+from app.services.ingredient_parser import parse_ingredient
 
-revision: str = "0003_repair_measures"
-down_revision: str | None = "0002_mvp2_planning"
+revision: str = "0004_pantry_semantics"
+down_revision: str | None = "0003_repair_measures"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-REPAIR_WORDS = (
-    "перо",
-    "пера",
-    "перьев",
-    "веточ",
-    "пучок",
-    "пучка",
-    "пучков",
-    "банк",
-    "упаков",
-)
-
-
-def _repair_saved_ingredients() -> None:
+def _repair_saved_feathers() -> None:
     connection = op.get_bind()
     rows = connection.execute(
         sa.text(
@@ -35,18 +22,16 @@ def _repair_saved_ingredients() -> None:
                 ri.id AS recipe_ingredient_id,
                 ri.ingredient_id,
                 ri.source_text,
-                r.user_id,
-                i.normalized_name
+                r.user_id
             FROM recipe_ingredients AS ri
             JOIN recipes AS r ON r.id = ri.recipe_id
-            JOIN ingredients AS i ON i.id = ri.ingredient_id
             """
         )
     ).mappings()
 
     for row in rows:
         source_text = row["source_text"]
-        if not any(word in source_text.lower() for word in REPAIR_WORDS):
+        if not any(word in source_text.lower() for word in ("перо", "пера", "перьев")):
             continue
         parsed = parse_ingredient(source_text)
         if parsed.quantity is None:
@@ -104,26 +89,44 @@ def _repair_saved_ingredients() -> None:
         )
 
 
-def _backfill_pantry_flags() -> None:
+def _move_butter_to_shopping_list() -> None:
     connection = op.get_bind()
-    rows = connection.execute(sa.text("SELECT id, name FROM ingredients")).mappings()
-    pantry_ids = [row["id"] for row in rows if is_pantry_ingredient(row["name"])]
-    if pantry_ids:
-        ingredients = sa.table(
-            "ingredients",
-            sa.column("id", sa.Integer()),
-            sa.column("is_pantry", sa.Boolean()),
-        )
+    butter_ids = list(
         connection.execute(
-            ingredients.update().where(ingredients.c.id.in_(pantry_ids)).values(is_pantry=True)
-        )
+            sa.text(
+                """
+                SELECT id FROM ingredients
+                WHERE normalized_name LIKE :butter AND normalized_name LIKE :oil
+                """
+            ),
+            {"butter": "%сливоч%", "oil": "%масл%"},
+        ).scalars()
+    )
+    if not butter_ids:
+        return
+
+    shopping_checks = sa.table(
+        "shopping_checks",
+        sa.column("ingredient_id", sa.Integer()),
+    )
+    ingredients = sa.table(
+        "ingredients",
+        sa.column("id", sa.Integer()),
+        sa.column("is_pantry", sa.Boolean()),
+    )
+    connection.execute(
+        shopping_checks.delete().where(shopping_checks.c.ingredient_id.in_(butter_ids))
+    )
+    connection.execute(
+        ingredients.update().where(ingredients.c.id.in_(butter_ids)).values(is_pantry=False)
+    )
 
 
 def upgrade() -> None:
-    _repair_saved_ingredients()
-    _backfill_pantry_flags()
+    _repair_saved_feathers()
+    _move_butter_to_shopping_list()
 
 
 def downgrade() -> None:
-    # The original imported values cannot be restored reliably.
+    # User inventory choices cannot be restored reliably.
     pass

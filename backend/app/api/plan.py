@@ -1,5 +1,7 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -98,6 +100,22 @@ def add_to_plan(
         ) from exc
     db.refresh(item)
     return planned_to_schema(item)
+
+
+@router.delete("/current-week", status_code=status.HTTP_204_NO_CONTENT)
+def clear_current_week(
+    db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> None:
+    window = planning_window(user)
+    db.execute(
+        delete(PlannedRecipe).where(
+            PlannedRecipe.user_id == user.id,
+            PlannedRecipe.planned_date.between(
+                window.cycle_start, window.cycle_start + timedelta(days=6)
+            ),
+        )
+    )
+    db.commit()
 
 
 @router.delete("/{planned_recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
