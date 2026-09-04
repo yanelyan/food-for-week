@@ -24,6 +24,7 @@ import type {
 } from './types'
 import { formatDateValue, parseLocalDate } from './utils/date'
 import { findActiveImportJob, isActiveImportJob } from './utils/importJob'
+import { detectDeviceTimeZone, syncSettingsTimeZone } from './utils/timeZone'
 
 interface PendingSlot {
   date: string
@@ -61,6 +62,7 @@ export default function App() {
   const toastTimer = useRef<number | null>(null)
   const scrollContainer = useRef<HTMLDivElement | null>(null)
   const observedLocalDate = useRef(formatDateValue(new Date()))
+  const observedTimeZone = useRef(detectDeviceTimeZone())
 
   const showToast = useCallback((message: string, kind: ToastKind = 'success') => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
@@ -114,7 +116,9 @@ export default function App() {
     window.Telegram?.WebApp?.expand()
     const load = async () => {
       try {
-        const nextSettings = await api.getSettings()
+        let nextSettings = await api.getSettings()
+        nextSettings = await syncSettingsTimeZone(nextSettings, api.updateSettings)
+        observedTimeZone.current = detectDeviceTimeZone()
         setSettings(nextSettings)
         await refreshRecipes()
         const recentImports = await api.listImportJobs().catch(() => [])
@@ -134,20 +138,45 @@ export default function App() {
   }, [refreshPlanAndShopping, refreshRecipes, showToast])
 
   useEffect(() => {
+    let refreshInProgress = false
+
     const refreshAfterDateChange = () => {
       const currentDate = formatDateValue(new Date())
+      const currentTimeZone = detectDeviceTimeZone()
+      const dateChanged = currentDate !== observedLocalDate.current
+      const timeZoneChanged = currentTimeZone !== observedTimeZone.current
       if (
-        currentDate === observedLocalDate.current ||
-        typeof settings?.purchase_weekday !== 'number'
+        (!dateChanged && !timeZoneChanged) ||
+        typeof settings?.purchase_weekday !== 'number' ||
+        refreshInProgress
       ) {
         return
       }
       const previousDate = observedLocalDate.current
+      const previousTimeZone = observedTimeZone.current
       observedLocalDate.current = currentDate
-      void refreshPlanAndShopping().catch((error) => {
-        observedLocalDate.current = previousDate
-        showToast(error instanceof Error ? error.message : 'Не удалось обновить новый день', 'error')
-      })
+      observedTimeZone.current = currentTimeZone
+      refreshInProgress = true
+      void (async () => {
+        const nextSettings = await syncSettingsTimeZone(
+          settings,
+          api.updateSettings,
+          currentTimeZone,
+        )
+        if (nextSettings !== settings) setSettings(nextSettings)
+        await refreshPlanAndShopping()
+      })()
+        .catch((error) => {
+          observedLocalDate.current = previousDate
+          observedTimeZone.current = previousTimeZone
+          showToast(
+            error instanceof Error ? error.message : 'Не удалось обновить текущую дату',
+            'error',
+          )
+        })
+        .finally(() => {
+          refreshInProgress = false
+        })
     }
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') refreshAfterDateChange()
@@ -160,7 +189,7 @@ export default function App() {
       document.removeEventListener('visibilitychange', onVisibilityChange)
       window.removeEventListener('focus', refreshAfterDateChange)
     }
-  }, [refreshPlanAndShopping, settings?.purchase_weekday, showToast])
+  }, [refreshPlanAndShopping, settings, showToast])
 
   useEffect(() => {
     if (!isActiveImportJob(importJob)) return
@@ -236,7 +265,7 @@ export default function App() {
     }
     setSavingPurchaseDay(true)
     try {
-      const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      const timezoneName = detectDeviceTimeZone()
       const nextSettings = await api.updateSettings(weekday, timezoneName)
       setSettings(nextSettings)
       await refreshPlanAndShopping()
