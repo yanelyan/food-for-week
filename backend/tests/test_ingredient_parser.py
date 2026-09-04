@@ -76,3 +76,14 @@ def test_converts_liquid_glasses_and_spoons_to_milliliters() -> None:
 def test_butter_is_not_classified_as_pantry_oil() -> None:
     assert is_pantry_ingredient("Оливковое масло") is True
     assert is_pantry_ingredient("Сливочное масло") is False
+
+
+def test_fresh_pepper_is_not_classified_as_spice() -> None:
+    assert is_pantry_ingredient("Красный болгарский перец") is False
+    assert is_pantry_ingredient("Перец сладкий") is False
+    assert is_pantry_ingredient("Черный перец") is True
+
+
+def test_garlic_powder_is_classified_as_pantry_spice() -> None:
+    assert is_pantry_ingredient("Чесночный порошок") is True
+    assert is_pantry_ingredient("Чеснок") is False

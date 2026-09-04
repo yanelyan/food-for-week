@@ -11,6 +11,8 @@ class AggregatedIngredient:
     quantities: dict[str, float] = field(default_factory=lambda: defaultdict(float))
     notes: set[str] = field(default_factory=set)
     alternative_quantities: dict[str, float] = field(default_factory=lambda: defaultdict(float))
+    quantified_source_count: int = 0
+    alternative_source_count: int = 0
 
 
 COMMON_CONVERSIONS: dict[str, dict[str, tuple[float, str]]] = {
@@ -65,13 +67,16 @@ def display_quantity(quantity: float, unit: str) -> str:
 
 def add_recipe_ingredient(target: AggregatedIngredient, item: RecipeIngredient) -> None:
     if item.quantity is not None and item.unit:
+        target.quantified_source_count += 1
         quantity, unit = canonical_quantity(item.quantity, item.unit)
         target.quantities[unit] += quantity
     elif item.quantity is not None:
+        target.quantified_source_count += 1
         target.quantities[""] += item.quantity
     if item.note:
         target.notes.add(item.note)
     if item.alternative_quantity is not None and item.alternative_unit:
+        target.alternative_source_count += 1
         quantity, unit = canonical_quantity(item.alternative_quantity, item.alternative_unit)
         target.alternative_quantities[unit] += quantity
 
@@ -93,7 +98,12 @@ def conversion_hint(target: AggregatedIngredient, normalized_name: str) -> str |
                 target.alternative_quantities.items(), key=lambda value: value[0]
             )
         ]
-        return "Эквивалент из рецепта: " + " + ".join(values)
+        prefix = (
+            "Эквивалент только для части количества: "
+            if target.alternative_source_count < target.quantified_source_count
+            else "Эквивалент из рецепта: "
+        )
+        return prefix + " + ".join(values)
 
     ingredient_key = next(
         (key for key in COMMON_CONVERSIONS if key in normalized_name),

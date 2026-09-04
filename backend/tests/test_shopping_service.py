@@ -53,3 +53,11 @@ def test_formats_branch_plural() -> None:
     target = AggregatedIngredient(ingredient_id=1, name="Петрушка")
     add_recipe_ingredient(target, make_item(4, "веточка", None, 8, "г"))
     assert format_amounts(target) == "4 веточки"
+
+
+def test_marks_equivalent_as_partial_when_not_every_amount_has_one() -> None:
+    target = AggregatedIngredient(ingredient_id=1, name="Соль")
+    add_recipe_ingredient(target, make_item(0.5, "ч. л.", None, 3.5, "г"))
+    add_recipe_ingredient(target, make_item(1, "ст. л."))
+
+    assert conversion_hint(target, "соль") == "Эквивалент только для части количества: 3,5 г"

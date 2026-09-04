@@ -124,7 +124,10 @@ PANTRY_WORDS = (
     "уксус",
     "соус",
     "горчица",
+    "чесночный порошок",
+    "сушеный чеснок",
 )
+FRESH_PEPPER_WORDS = ("болгарск", "сладк", "рамиро")
 
 
 @dataclass(frozen=True)
@@ -162,6 +165,8 @@ def normalize_ingredient_name(value: str) -> str:
 def is_pantry_ingredient(value: str) -> bool:
     normalized = normalize_ingredient_name(value)
     if "сливоч" in normalized and "масл" in normalized:
+        return False
+    if "перец" in normalized and any(word in normalized for word in FRESH_PEPPER_WORDS):
         return False
     return any(word in normalized for word in PANTRY_WORDS)
 

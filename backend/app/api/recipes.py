@@ -180,13 +180,18 @@ def update_recipe_ingredient(
 
     normalized_name = normalize_ingredient_name(payload.name)
     current = item.ingredient
+    next_unit = payload.unit.strip() if payload.unit else None
+    amount_changed = payload.quantity != item.quantity or next_unit != item.unit
     if normalized_name != current.normalized_name:
         item.ingredient = get_or_create_ingredient(db, user.id, payload.name)
     else:
         current.name = payload.name.strip()
     item.quantity = payload.quantity
-    item.unit = payload.unit.strip() if payload.unit else None
+    item.unit = next_unit
     item.note = payload.note.strip() if payload.note else None
+    if amount_changed:
+        item.alternative_quantity = None
+        item.alternative_unit = None
     item.ingredient.is_pantry = payload.is_pantry
     item.source_text = " ".join(
         value

@@ -136,3 +136,47 @@ def test_full_recipe_plan_and_shopping_flow(
     assert client.delete("/api/plan/current-week").status_code == 204
     remaining = client.get("/api/plan").json()["items"]
     assert [item["planned_date"] for item in remaining] == [next_week.isoformat()]
+
+
+def test_changing_amount_removes_stale_source_equivalent(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    imported = ImportedRecipe(
+        title="Тунец для салата",
+        source_url="https://food.ru/recipes/2-tuna",
+        image_url=None,
+        source_yield=None,
+        meal_types=[MealType.lunch],
+        ingredients=[
+            ParsedIngredient(
+                name="Тунец",
+                normalized_name="тунец",
+                source_text="Тунец 2 банки / 540 г",
+                quantity=2,
+                unit="банка",
+                alternative_quantity=540,
+                alternative_unit="г",
+            )
+        ],
+    )
+    monkeypatch.setattr("app.services.recipe_service.fetch_recipe", lambda _: imported)
+
+    assert client.post("/api/recipes/import", json={"url": imported.source_url}).status_code == 202
+    job = client.get("/api/recipes/imports/recent").json()[0]
+    recipe = client.get(f"/api/recipes/{job['recipe_id']}").json()
+    ingredient = recipe["ingredients"][0]
+
+    updated = client.patch(
+        f"/api/recipes/{recipe['id']}/ingredients/{ingredient['id']}",
+        json={
+            "name": ingredient["name"],
+            "quantity": 1,
+            "unit": "банка",
+            "note": None,
+            "is_pantry": False,
+        },
+    ).json()
+
+    assert updated["ingredients"][0]["quantity"] == 1
+    assert updated["ingredients"][0]["alternative_quantity"] is None
+    assert updated["ingredients"][0]["alternative_unit"] is None
