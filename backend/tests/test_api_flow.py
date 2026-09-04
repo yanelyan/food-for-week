@@ -217,3 +217,70 @@ def test_rejects_second_active_import(client: TestClient, monkeypatch: pytest.Mo
     assert duplicate.status_code == 409
     assert duplicate.json()["detail"] == "Импорт этого рецепта уже выполняется"
     assert len(client.get("/api/recipes/imports/recent").json()) == 1
+
+
+def test_personal_pantry_applies_to_existing_and_future_recipes(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    imported = ImportedRecipe(
+        title="Салат с нутом",
+        source_url="https://food.ru/recipes/4-chickpeas",
+        image_url=None,
+        source_yield=None,
+        meal_types=[MealType.lunch],
+        ingredients=[
+            ParsedIngredient(
+                name="Нут",
+                normalized_name="нут",
+                source_text="Нут 200 г",
+                quantity=200,
+                unit="г",
+            )
+        ],
+    )
+    monkeypatch.setattr("app.services.recipe_service.fetch_recipe", lambda _: imported)
+
+    assert client.post("/api/recipes/import", json={"url": imported.source_url}).status_code == 202
+    recipe = client.get("/api/recipes").json()[0]
+    recipe_detail = client.get(f"/api/recipes/{recipe['id']}").json()
+    assert recipe_detail["ingredients"][0]["is_pantry"] is False
+
+    added = client.post("/api/shopping-list/pantry", json={"name": "Нут"})
+    assert added.status_code == 201
+    pantry_product = added.json()
+    assert pantry_product["normalized_name"] == "нут"
+    assert client.get(f"/api/recipes/{recipe['id']}").json()["ingredients"][0]["is_pantry"] is True
+    assert [item["name"] for item in client.get("/api/shopping-list/pantry").json()] == ["Нут"]
+
+    duplicate = client.post("/api/shopping-list/pantry", json={"name": " нут "})
+    assert duplicate.status_code == 409
+
+    assert client.delete(f"/api/shopping-list/pantry/{pantry_product['id']}").status_code == 204
+    assert client.get("/api/shopping-list/pantry").json() == []
+    assert client.get(f"/api/recipes/{recipe['id']}").json()["ingredients"][0]["is_pantry"] is False
+
+    preconfigured = client.post("/api/shopping-list/pantry", json={"name": "Киноа"})
+    assert preconfigured.status_code == 201
+    future = ImportedRecipe(
+        title="Киноа на завтрак",
+        source_url="https://food.ru/recipes/5-quinoa",
+        image_url=None,
+        source_yield=None,
+        meal_types=[MealType.breakfast],
+        ingredients=[
+            ParsedIngredient(
+                name="Киноа",
+                normalized_name="киноа",
+                source_text="Киноа 100 г",
+                quantity=100,
+                unit="г",
+            )
+        ],
+    )
+    monkeypatch.setattr("app.services.recipe_service.fetch_recipe", lambda _: future)
+    assert client.post("/api/recipes/import", json={"url": future.source_url}).status_code == 202
+    future_recipe = client.get("/api/recipes").json()[0]
+    assert (
+        client.get(f"/api/recipes/{future_recipe['id']}").json()["ingredients"][0]["is_pantry"]
+        is True
+    )

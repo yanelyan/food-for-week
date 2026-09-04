@@ -1,18 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import Ingredient, PlannedRecipe, RecipeIngredient, ShoppingCheck, User
 from app.schemas import (
+    PantryProductCreate,
+    PantryProductRead,
     PlanPeriodRead,
     ShoppingAmount,
     ShoppingCheckUpdate,
     ShoppingItemRead,
     ShoppingListRead,
 )
+from app.services.ingredient_parser import normalize_ingredient_name
 from app.services.plan_service import planning_window
+from app.services.recipe_service import get_or_create_ingredient
 from app.services.shopping_service import (
     AggregatedIngredient,
     add_recipe_ingredient,
@@ -87,6 +91,80 @@ def get_shopping_list(
         items=items,
         pantry_items=pantry_items,
     )
+
+
+@router.get("/pantry", response_model=list[PantryProductRead])
+def list_pantry_products(
+    db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> list[Ingredient]:
+    return list(
+        db.scalars(
+            select(Ingredient)
+            .where(Ingredient.user_id == user.id, Ingredient.is_pantry.is_(True))
+            .order_by(func.lower(Ingredient.name), Ingredient.id)
+        ).all()
+    )
+
+
+@router.post("/pantry", response_model=PantryProductRead, status_code=status.HTTP_201_CREATED)
+def add_pantry_product(
+    payload: PantryProductCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Ingredient:
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Введите название продукта",
+        )
+    existing = db.scalar(
+        select(Ingredient).where(
+            Ingredient.user_id == user.id,
+            Ingredient.normalized_name == normalize_ingredient_name(name),
+        )
+    )
+    if existing is not None and existing.is_pantry:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Этот продукт уже добавлен",
+        )
+    ingredient = existing or get_or_create_ingredient(db, user.id, name)
+    ingredient.is_pantry = True
+    db.execute(
+        delete(ShoppingCheck).where(
+            ShoppingCheck.user_id == user.id,
+            ShoppingCheck.ingredient_id == ingredient.id,
+        )
+    )
+    db.commit()
+    db.refresh(ingredient)
+    return ingredient
+
+
+@router.delete("/pantry/{ingredient_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_pantry_product(
+    ingredient_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> None:
+    ingredient = db.scalar(
+        select(Ingredient).where(
+            Ingredient.id == ingredient_id,
+            Ingredient.user_id == user.id,
+            Ingredient.is_pantry.is_(True),
+        )
+    )
+    if ingredient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Продукт не найден")
+    ingredient.is_pantry = False
+    db.execute(
+        delete(ShoppingCheck).where(
+            ShoppingCheck.user_id == user.id,
+            ShoppingCheck.ingredient_id == ingredient.id,
+        )
+    )
+    db.commit()
 
 
 @router.patch("/{ingredient_id}", response_model=ShoppingItemRead)

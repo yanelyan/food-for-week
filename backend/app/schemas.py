@@ -125,6 +125,18 @@ class ShoppingCheckUpdate(BaseModel):
     checked: bool
 
 
+class PantryProductCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=180)
+
+
+class PantryProductRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    normalized_name: str
+
+
 class ShoppingListRead(BaseModel):
     period: PlanPeriodRead
     purchase_weekday: int
