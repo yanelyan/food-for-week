@@ -102,6 +102,18 @@ def update_shopping_check(
     )
     if ingredient is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Продукт не найден")
+    used_in_period = db.scalar(
+        select(RecipeIngredient.id)
+        .join(PlannedRecipe, PlannedRecipe.recipe_id == RecipeIngredient.recipe_id)
+        .where(
+            RecipeIngredient.ingredient_id == ingredient_id,
+            PlannedRecipe.user_id == user.id,
+            PlannedRecipe.planned_date.between(window.shopping_start, window.shopping_end),
+        )
+        .limit(1)
+    )
+    if used_in_period is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Продукт не используется")
     check = db.scalar(
         select(ShoppingCheck).where(
             ShoppingCheck.user_id == user.id,
@@ -130,8 +142,8 @@ def update_shopping_check(
         ),
         None,
     )
-    if item is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Продукт не используется")
+    if item is None:  # guarded by the period membership check above
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Список покупок изменился")
     return item
 
 

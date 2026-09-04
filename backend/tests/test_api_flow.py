@@ -180,3 +180,40 @@ def test_changing_amount_removes_stale_source_equivalent(
     assert updated["ingredients"][0]["quantity"] == 1
     assert updated["ingredients"][0]["alternative_quantity"] is None
     assert updated["ingredients"][0]["alternative_unit"] is None
+
+    client.put("/api/settings", json={"purchase_weekday": 0, "timezone_name": "UTC"})
+    unused_check = client.patch(
+        f"/api/shopping-list/{ingredient['ingredient_id']}", json={"checked": True}
+    )
+    assert unused_check.status_code == 404
+
+    shopping = client.get("/api/shopping-list").json()
+    planned_date = max(client.get("/api/plan").json()["today"], shopping["period"]["start"])
+    assert (
+        client.post(
+            "/api/plan",
+            json={
+                "recipe_id": recipe["id"],
+                "planned_date": planned_date,
+                "meal_type": "lunch",
+            },
+        ).status_code
+        == 201
+    )
+    tuna = client.get("/api/shopping-list").json()["items"][0]
+    assert tuna["checked"] is False
+
+
+def test_rejects_second_active_import(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "starlette.background.BackgroundTasks.add_task",
+        lambda self, func, *args, **kwargs: None,
+    )
+    url = "https://food.ru/recipes/3-slow"
+
+    assert client.post("/api/recipes/import", json={"url": url}).status_code == 202
+    duplicate = client.post("/api/recipes/import", json={"url": url})
+
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"] == "Импорт этого рецепта уже выполняется"
+    assert len(client.get("/api/recipes/imports/recent").json()) == 1

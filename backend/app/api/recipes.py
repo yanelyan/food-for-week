@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import ImportJob, Recipe, RecipeIngredient, RecipeMealType, User
+from app.models import ImportJob, ImportStatus, Recipe, RecipeIngredient, RecipeMealType, User
 from app.schemas import (
     ImportJobRead,
     ImportRequest,
@@ -109,6 +109,18 @@ def import_recipe(
     )
     if duplicate:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Этот рецепт уже добавлен")
+    active_job = db.scalar(
+        select(ImportJob).where(
+            ImportJob.user_id == user.id,
+            ImportJob.source_url == source_url,
+            ImportJob.status.in_([ImportStatus.pending, ImportStatus.processing]),
+        )
+    )
+    if active_job:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Импорт этого рецепта уже выполняется",
+        )
 
     job = ImportJob(id=str(uuid4()), user_id=user.id, source_url=source_url)
     db.add(job)
