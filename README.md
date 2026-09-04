@@ -29,7 +29,7 @@ Telegram Mini App и обычное веб-приложение для план�
 - база данных: PostgreSQL в Docker, SQLite для быстрой локальной разработки;
 - локальный запуск и последующее развёртывание на NAS: Docker Compose.
 
-## Быстрый запуск через Docker
+## Быстрый локальный запуск через Docker
 
 Понадобятся Docker и Docker Compose.
 
@@ -45,6 +45,17 @@ docker compose up --build
 - проверка backend: [http://localhost:8000/api/health](http://localhost:8000/api/health).
 
 PostgreSQL, миграции, backend и frontend запускаются автоматически. Данные базы сохраняются в Docker volume.
+
+Файл `.env.example` предназначен только для разработки: он включает специального локального
+пользователя. Не публикуйте такой экземпляр в интернете.
+
+## Подготовка production на NAS
+
+Для закрытого production-режима используйте `.env.production.example` как основу, задайте
+настоящий `TELEGRAM_BOT_TOKEN`, сложный пароль БД, HTTPS-адрес API и точный адрес frontend.
+Backend не запускается в production без токена Telegram. Перед публикацией также нужны HTTPS
+reverse proxy и резервное копирование; полная инструкция развёртывания будет оформлена на этапе
+NAS-деплоя.
 
 ## Запуск без Docker
 

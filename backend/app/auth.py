@@ -21,6 +21,13 @@ class TelegramUser:
     display_name: str
 
 
+def invalid_telegram_data() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid Telegram data",
+    )
+
+
 def validate_telegram_init_data(init_data: str) -> TelegramUser:
     if not settings.telegram_bot_token:
         raise HTTPException(
@@ -29,11 +36,12 @@ def validate_telegram_init_data(init_data: str) -> TelegramUser:
 
     values = dict(parse_qsl(init_data, keep_blank_values=True))
     received_hash = values.pop("hash", None)
-    auth_date = int(values.get("auth_date", "0"))
+    try:
+        auth_date = int(values.get("auth_date", "0"))
+    except (TypeError, ValueError) as exc:
+        raise invalid_telegram_data() from exc
     if not received_hash or abs(time.time() - auth_date) > 86400:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram data"
-        )
+        raise invalid_telegram_data()
 
     data_check = "\n".join(f"{key}={values[key]}" for key in sorted(values))
     secret = hmac.new(b"WebAppData", settings.telegram_bot_token.encode(), hashlib.sha256).digest()
@@ -43,8 +51,13 @@ def validate_telegram_init_data(init_data: str) -> TelegramUser:
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram signature"
         )
 
-    user_data = json.loads(values.get("user", "{}"))
-    telegram_id = int(user_data["id"])
+    try:
+        user_data = json.loads(values.get("user", "{}"))
+        if not isinstance(user_data, dict):
+            raise TypeError("Telegram user must be an object")
+        telegram_id = int(user_data["id"])
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise invalid_telegram_data() from exc
     display_name = " ".join(
         part for part in [user_data.get("first_name"), user_data.get("last_name")] if part
     ) or user_data.get("username", f"Пользователь {telegram_id}")

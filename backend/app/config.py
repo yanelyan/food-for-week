@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +12,12 @@ class Settings(BaseSettings):
     frontend_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def require_production_secrets(self) -> "Settings":
+        if not self.is_local and not self.telegram_bot_token.strip():
+            raise ValueError("TELEGRAM_BOT_TOKEN is required outside local mode")
+        return self
 
     @property
     def is_local(self) -> bool:
