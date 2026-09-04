@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { MEAL_LABELS, MEAL_ORDER } from '../constants'
 import type { MealType, Recipe, RecipeIngredient } from '../types'
+import { parseOptionalQuantity } from '../utils/quantity'
 import { BottomSheet } from './BottomSheet'
 
 interface Props {
@@ -31,14 +32,25 @@ function IngredientForm({
   const [unit, setUnit] = useState(ingredient.unit ?? '')
   const [note, setNote] = useState(ingredient.note ?? '')
   const [isPantry, setIsPantry] = useState(ingredient.is_pantry)
+  const [quantityError, setQuantityError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const save = async () => {
+    let parsedQuantity: number | null
+    try {
+      parsedQuantity = parseOptionalQuantity(quantity)
+      setQuantityError(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Введите корректное количество'
+      setQuantityError(message)
+      onError(message)
+      return
+    }
     setSaving(true)
     try {
       const recipe = await api.updateIngredient(recipeId, ingredient.id, {
         name,
-        quantity: quantity === '' ? null : Number(quantity.replace(',', '.')),
+        quantity: parsedQuantity,
         unit: unit || null,
         note: note || null,
         is_pantry: isPantry,
@@ -63,9 +75,15 @@ function IngredientForm({
         <input
           value={quantity}
           inputMode="decimal"
-          onChange={(event) => setQuantity(event.target.value)}
+          onChange={(event) => {
+            setQuantity(event.target.value)
+            setQuantityError(null)
+          }}
           placeholder="Кол-во"
-          className="min-w-0 rounded-xl border border-sky-100 bg-white px-3 py-2 text-sm outline-none focus:border-sky-400"
+          aria-invalid={quantityError !== null}
+          className={`min-w-0 rounded-xl border bg-white px-3 py-2 text-sm outline-none ${
+            quantityError ? 'border-rose-400 focus:border-rose-500' : 'border-sky-100 focus:border-sky-400'
+          }`}
         />
         <input
           value={unit}
@@ -83,6 +101,7 @@ function IngredientForm({
           {saving ? <LoaderCircle className="animate-spin" size={17} /> : <Save size={17} />}
         </button>
       </div>
+      {quantityError && <p className="mt-1 text-xs font-semibold text-rose-600">{quantityError}</p>}
       <input
         value={note}
         onChange={(event) => setNote(event.target.value)}

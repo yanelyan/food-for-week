@@ -20,7 +20,8 @@ import type {
   Tab,
   UserSettings,
 } from './types'
-import { parseLocalDate } from './utils/date'
+import { formatDateValue, parseLocalDate } from './utils/date'
+import { findActiveImportJob, isActiveImportJob } from './utils/importJob'
 
 interface PendingSlot {
   date: string
@@ -53,6 +54,7 @@ export default function App() {
   const [toast, setToast] = useState<ToastData | null>(null)
   const toastTimer = useRef<number | null>(null)
   const scrollContainer = useRef<HTMLDivElement | null>(null)
+  const observedLocalDate = useRef(formatDateValue(new Date()))
 
   const showToast = useCallback((message: string, kind: ToastKind = 'success') => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
@@ -93,6 +95,8 @@ export default function App() {
         const nextSettings = await api.getSettings()
         setSettings(nextSettings)
         await refreshRecipes()
+        const recentImports = await api.listImportJobs().catch(() => [])
+        setImportJob(findActiveImportJob(recentImports))
         if (nextSettings.purchase_weekday === null) {
           setPurchaseDayOpen(true)
         } else {
@@ -108,7 +112,36 @@ export default function App() {
   }, [refreshPlanAndShopping, refreshRecipes, showToast])
 
   useEffect(() => {
-    if (!importJob || !['pending', 'processing'].includes(importJob.status)) return
+    const refreshAfterDateChange = () => {
+      const currentDate = formatDateValue(new Date())
+      if (
+        currentDate === observedLocalDate.current ||
+        typeof settings?.purchase_weekday !== 'number'
+      ) {
+        return
+      }
+      const previousDate = observedLocalDate.current
+      observedLocalDate.current = currentDate
+      void refreshPlanAndShopping().catch((error) => {
+        observedLocalDate.current = previousDate
+        showToast(error instanceof Error ? error.message : 'Не удалось обновить новый день', 'error')
+      })
+    }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshAfterDateChange()
+    }
+    const timer = window.setInterval(refreshAfterDateChange, 60_000)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('focus', refreshAfterDateChange)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('focus', refreshAfterDateChange)
+    }
+  }, [refreshPlanAndShopping, settings?.purchase_weekday, showToast])
+
+  useEffect(() => {
+    if (!isActiveImportJob(importJob)) return
     const timer = window.setInterval(async () => {
       try {
         const job = await api.getImportJob(importJob.id)
@@ -291,7 +324,7 @@ export default function App() {
                 selectionLabel={pendingSlot ? selectionLabel(pendingSlot) : null}
                 onFilterChange={setRecipeFilter}
                 onOpenImport={() => {
-                  setImportJob(null)
+                  if (!isActiveImportJob(importJob)) setImportJob(null)
                   setImportOpen(true)
                 }}
                 onCloseImport={() => setImportOpen(false)}
