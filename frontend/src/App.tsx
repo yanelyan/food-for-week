@@ -256,6 +256,23 @@ export default function App() {
                     showToast(error instanceof Error ? error.message : 'Не удалось убрать блюдо', 'error')
                   }
                 }}
+                onClearCurrentWeek={async () => {
+                  if (
+                    !window.confirm(
+                      'Удалить все блюда из меню текущей недели? Это действие нельзя отменить.',
+                    )
+                  ) {
+                    return
+                  }
+                  try {
+                    await api.clearCurrentWeek()
+                    setSelectedRecipe(null)
+                    await refreshPlanAndShopping()
+                    showToast('Меню текущей недели очищено')
+                  } catch (error) {
+                    showToast(error instanceof Error ? error.message : 'Не удалось очистить меню', 'error')
+                  }
+                }}
                 onNeedRecipe={(date, mealType) => {
                   setPendingSlot({ date, mealType })
                   setRecipeFilter(mealType)

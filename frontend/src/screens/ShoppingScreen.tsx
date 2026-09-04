@@ -2,7 +2,7 @@ import { Check, Home, Info, RotateCcw, ShoppingBasket } from 'lucide-react'
 import { useState } from 'react'
 
 import { BottomSheet } from '../components/BottomSheet'
-import { PURCHASE_DAY_LABELS } from '../components/PurchaseDaySheet'
+import { PURCHASE_DAY_AFTER_IN } from '../components/PurchaseDaySheet'
 import type { ShoppingItem, ShoppingList } from '../types'
 import { formatPeriodDate } from '../utils/date'
 
@@ -17,10 +17,12 @@ function ItemRows({
   items,
   onToggle,
   onHint,
+  strikeChecked = true,
 }: {
   items: ShoppingItem[]
   onToggle: (item: ShoppingItem) => Promise<void>
   onHint: (item: ShoppingItem) => void
+  strikeChecked?: boolean
 }) {
   return items.map((item, index) => (
     <div
@@ -47,12 +49,16 @@ function ItemRows({
       >
         <p
           className={`font-semibold transition ${
-            item.checked ? 'text-slate-300 line-through' : 'text-slate-800'
+            item.checked && strikeChecked ? 'text-slate-300 line-through' : 'text-slate-800'
           }`}
         >
           {item.name}
         </p>
-        <p className={`mt-0.5 text-sm ${item.checked ? 'text-slate-300' : 'text-slate-500'}`}>
+        <p
+          className={`mt-0.5 text-sm ${
+            item.checked && strikeChecked ? 'text-slate-300' : 'text-slate-500'
+          }`}
+        >
           {item.display_amount}
         </p>
       </button>
@@ -91,7 +97,7 @@ export function ShoppingScreen({
             className="text-left text-sm font-semibold text-sky-600"
           >
             {shopping
-              ? `Не забудьте закупиться в ${PURCHASE_DAY_LABELS[shopping.purchase_weekday].toLowerCase()}`
+              ? `Не забудьте закупиться в ${PURCHASE_DAY_AFTER_IN[shopping.purchase_weekday]}`
               : 'День закупок'}
           </button>
           <h1 className="text-3xl font-black tracking-tight text-slate-900">Список покупок</h1>
@@ -155,7 +161,12 @@ export function ShoppingScreen({
                 </div>
               </div>
               <div className="overflow-hidden rounded-[1.75rem] border border-cyan-100 bg-white shadow-sm">
-                <ItemRows items={pantryItems} onToggle={onToggle} onHint={setHint} />
+                <ItemRows
+                  items={pantryItems}
+                  onToggle={onToggle}
+                  onHint={setHint}
+                  strikeChecked={false}
+                />
               </div>
             </section>
           )}

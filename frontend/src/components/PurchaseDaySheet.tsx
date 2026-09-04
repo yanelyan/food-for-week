@@ -13,6 +13,16 @@ export const PURCHASE_DAY_LABELS = [
   'Воскресенье',
 ]
 
+export const PURCHASE_DAY_AFTER_IN = [
+  'понедельник',
+  'вторник',
+  'среду',
+  'четверг',
+  'пятницу',
+  'субботу',
+  'воскресенье',
+]
+
 interface Props {
   open: boolean
   currentDay: number | null

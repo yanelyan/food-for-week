@@ -112,6 +112,7 @@ interface Props {
   onCancelSelection: () => void
   onAdd: (date: string, mealType: MealType) => Promise<void>
   onRemove: (id: number) => Promise<void>
+  onClearCurrentWeek: () => Promise<void>
   onNeedRecipe: (date: string, mealType: MealType) => void
   onChangePurchaseDay: () => void
 }
@@ -123,6 +124,7 @@ export function PlanScreen({
   onCancelSelection,
   onAdd,
   onRemove,
+  onClearCurrentWeek,
   onNeedRecipe,
   onChangePurchaseDay,
 }: Props) {
@@ -283,6 +285,15 @@ export function PlanScreen({
             </section>
           )
         })}
+      </div>
+      <div className="px-4 pt-8">
+        <button
+          type="button"
+          onClick={() => void onClearCurrentWeek()}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white py-3.5 text-sm font-bold text-rose-500"
+        >
+          <Trash2 size={17} /> Очистить меню текущей недели
+        </button>
       </div>
     </section>
   )

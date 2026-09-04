@@ -81,6 +81,7 @@ export const api = {
       body: JSON.stringify({ recipe_id: recipeId, planned_date: plannedDate, meal_type: mealType }),
     }),
   removeFromPlan: (id: number) => request<void>(`/plan/${id}`, { method: 'DELETE' }),
+  clearCurrentWeek: () => request<void>('/plan/current-week', { method: 'DELETE' }),
   getShoppingList: () => request<ShoppingList>('/shopping-list'),
   updateShoppingCheck: (ingredientId: number, checked: boolean) =>
     request<ShoppingItem>(`/shopping-list/${ingredientId}`, {
